@@ -31,14 +31,6 @@ pub struct Token {
     literal: String,
 }
 
-pub struct Lexer {
-    input: String,
-    position: usize,
-    read_position: usize,
-    ch: char,
-    keywords: HashMap<String, TokenType>,
-}
-
 impl Token {
     pub fn new<T: Into<String>>(token_type: TokenType, literal: T) -> Self
     {
@@ -48,7 +40,10 @@ impl Token {
         }
     }
 
-    pub fn match_char(ch: char) -> TokenType {
+    pub fn match_char(ch: char, is_eof: bool) -> TokenType {
+        if is_eof {
+            return TokenType::EOF;
+        }
         match ch {
             '=' => TokenType::ASSIGN,
             ';' => TokenType::SEMICOLON,
@@ -63,6 +58,15 @@ impl Token {
     }
 }
 
+pub struct Lexer {
+    input: String,
+    position: usize, // Current
+    read_position: usize, // Current + 1
+    ch: char,
+    is_eof: bool,
+    keywords: HashMap<String, TokenType>,
+}
+
 impl Lexer {
     pub fn new(input: String) -> Self {
         let keywords = HashMap::from([
@@ -74,6 +78,7 @@ impl Lexer {
             position: 0,
             read_position: 0,
             ch: 0 as char,
+            is_eof: false,
             keywords,
         };
         l.read_char();
@@ -82,9 +87,9 @@ impl Lexer {
 
     fn read_char(&mut self) {
         if self.read_position >= self.input.len() {
-            self.ch = 0 as char;
+            self.is_eof = true;
         } else {
-            self.ch = self.input.chars().nth(self.read_position).unwrap();
+            self.ch = self.input.chars().nth(self.read_position).unwrap(); // Consume the next char
         }
         self.position = self.read_position;
         self.read_position += 1;
@@ -92,7 +97,7 @@ impl Lexer {
 
     fn next_token(&mut self) -> Token {
         self.ignore_whitespace();
-        let token = match Token::match_char(self.ch) {
+        let token = match Token::match_char(self.ch, self.is_eof) {
             TokenType::ASSIGN => Token::new(TokenType::ASSIGN, self.ch),
             TokenType::PLUS => Token::new(TokenType::PLUS, self.ch),
             TokenType::COMMA => Token::new(TokenType::COMMA, self.ch),
@@ -106,6 +111,10 @@ impl Lexer {
                 if Lexer::is_letter(self.ch) {
                     let literal = self.read_identifier();
                     let token_type = self.find_indentifier(&literal);
+                    return Token::new(token_type, literal);
+                } else if Lexer::is_digit(self.ch) {
+                    let literal = self.read_number();
+                    let token_type = TokenType::INT;
                     return Token::new(token_type, literal);
                 } else {
                     Token::new(TokenType::ILLEGAL, self.ch as char)
@@ -124,8 +133,20 @@ impl Lexer {
         return self.input[position..self.position].to_string();
     }
 
+    fn read_number(&mut self) -> String {
+        let position = self.position;
+        while Lexer::is_digit(self.ch) {
+            self.read_char();
+        }
+        return self.input[position..self.position].to_string();
+    }
+
     fn is_letter(ch: char) -> bool {
         return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_';
+    }
+
+    fn is_digit(ch: char) -> bool {
+        return '0' <= ch && ch <= '9';
     }
 
     fn find_indentifier(&self, literal: &String) -> TokenType {
