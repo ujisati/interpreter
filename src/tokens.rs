@@ -1,5 +1,10 @@
 use std::collections::HashMap;
 
+/// Rust only allows enum discriminant to be an integer
+/// Token::match_char handles matching TokenType to char 
+/// The Lexer keywords HashMap handles matching TokenType to keywords
+/// I want to refactor that at somepoint, but it was the most simple
+/// translation from Thorsten Ball's Go code for me at the time.
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum TokenType {
     ILLEGAL,
@@ -12,6 +17,12 @@ pub enum TokenType {
     // Operators
     ASSIGN,
     PLUS,
+    MINUS,
+    BANG,
+    ASTERISK,
+    SLASH,
+    LT,
+    GT,
 
     // Delimiters
     COMMA,
@@ -24,6 +35,11 @@ pub enum TokenType {
     // Keywords
     FUNCTION,
     LET,
+    TRUE,
+    FALSE,
+    IF,
+    ELSE,
+    RETURN
 }
 
 pub struct Token {
@@ -32,8 +48,7 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new<T: Into<String>>(token_type: TokenType, literal: T) -> Self
-    {
+    pub fn new<T: Into<String>>(token_type: TokenType, literal: T) -> Self {
         Self {
             token_type,
             literal: literal.into(),
@@ -53,6 +68,12 @@ impl Token {
             '+' => TokenType::PLUS,
             '{' => TokenType::LBRACE,
             '}' => TokenType::RBRACE,
+            '-' => TokenType::MINUS,
+            '!' => TokenType::BANG,
+            '*' => TokenType::ASTERISK,
+            '/' => TokenType::SLASH,
+            '>' => TokenType::GT,
+            '<' => TokenType::LT,
             _ => TokenType::ILLEGAL,
         }
     }
@@ -60,7 +81,7 @@ impl Token {
 
 pub struct Lexer {
     input: String,
-    position: usize, // Current
+    position: usize,      // Current
     read_position: usize, // Current + 1
     ch: char,
     is_eof: bool,
@@ -72,6 +93,12 @@ impl Lexer {
         let keywords = HashMap::from([
             ("fn".to_string(), TokenType::FUNCTION),
             ("let".to_string(), TokenType::LET),
+            ("true".to_string(), TokenType::TRUE),
+            ("false".to_string(), TokenType::FALSE),
+            ("if".to_string(), TokenType::IF),
+            ("else".to_string(), TokenType::ELSE),
+            ("return".to_string(), TokenType::RETURN),
+
         ]);
         let mut l = Self {
             input,
@@ -106,6 +133,12 @@ impl Lexer {
             TokenType::RPAREN => Token::new(TokenType::RPAREN, self.ch),
             TokenType::LBRACE => Token::new(TokenType::LBRACE, self.ch),
             TokenType::RBRACE => Token::new(TokenType::RBRACE, self.ch),
+            TokenType::MINUS => Token::new(TokenType::MINUS, self.ch),
+            TokenType::BANG => Token::new(TokenType::BANG, self.ch),
+            TokenType::ASTERISK => Token::new(TokenType::ASTERISK, self.ch),
+            TokenType::SLASH => Token::new(TokenType::SLASH, self.ch),
+            TokenType::LT => Token::new(TokenType::LT, self.ch),
+            TokenType::GT => Token::new(TokenType::GT, self.ch),
             TokenType::EOF => Token::new(TokenType::EOF, ""),
             _ => {
                 if Lexer::is_letter(self.ch) {
@@ -153,11 +186,13 @@ impl Lexer {
         if let Some(token_type) = self.keywords.get(literal) {
             return token_type.clone();
         }
-        return TokenType::IDENT
+        return TokenType::IDENT;
     }
 
     fn ignore_whitespace(&mut self) {
-        while self.ch == ' ' || self.ch == '\t' || self.ch == '\n' || self.ch == '\r' {
+        while !self.is_eof
+            && (self.ch == ' ' || self.ch == '\t' || self.ch == '\n' || self.ch == '\r')
+        {
             self.read_char();
         }
     }
@@ -206,9 +241,53 @@ mod tests {
             (TokenType::IDENT, "ten"),
             (TokenType::RPAREN, ")"),
             (TokenType::SEMICOLON, ";"),
+            (TokenType::BANG, "!"),
+            (TokenType::MINUS, "-"),
+            (TokenType::SLASH, "/"),
+            (TokenType::ASTERISK, "*"),
+            (TokenType::INT, "2"),
+            (TokenType::SEMICOLON, ";"),
+            (TokenType::INT, "0"),
+            (TokenType::LT, "<"),
+            (TokenType::INT, "10"),
+            (TokenType::GT, ">"),
+            (TokenType::INT, "9"),
+            (TokenType::SEMICOLON, ";"),
+            (TokenType::IF, "if"),
+            (TokenType::LPAREN, "("),
+            (TokenType::INT, "1"),
+            (TokenType::LT, "<"),
+            (TokenType::INT, "7"),
+            (TokenType::RPAREN, ")"),
+            (TokenType::LBRACE, "{"),
+            (TokenType::RETURN, "return"),
+            (TokenType::TRUE, "true"),
+            (TokenType::SEMICOLON, ";"),
+            (TokenType::RBRACE, "}"),
+            (TokenType::ELSE, "else"),
+            (TokenType::LBRACE, "{"),
+            (TokenType::RETURN, "return"),
+            (TokenType::FALSE, "false"),
+            (TokenType::SEMICOLON, ";"),
+            (TokenType::RBRACE, "}"),
             (TokenType::EOF, ""),
         ];
-        let mut lexer = Lexer::new("let five = 5; let ten = 10; let add = fn(x, y) { x + y; }; let result = add(five, ten);".to_string());
+        let mut lexer = Lexer::new(
+            "
+            let five = 5; 
+            let ten = 10; 
+            let add = fn(x, y) { x + y; };
+            let result = add(five, ten);
+            !-/*2;
+            0 < 10 > 9;
+            if (1 < 7) {
+                return true;
+            } else {
+                return false;
+            }
+            "
+            .to_string(),
+        );
         for token in tokens.iter() {
             let tok = lexer.next_token();
             assert_eq!(tok.token_type, token.0);
