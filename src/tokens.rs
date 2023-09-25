@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 /// Rust only allows enum discriminant to be an integer
-/// Token::match_char handles matching TokenType to char 
+/// Token::match_char handles matching TokenType to char
 /// The Lexer keywords HashMap handles matching TokenType to keywords
 /// I want to refactor that at somepoint, but it was the most simple
 /// translation from Thorsten Ball's Go code for me at the time.
@@ -16,6 +16,8 @@ pub enum TokenType {
 
     // Operators
     ASSIGN,
+    EQUAL,
+    NOTEQUAL,
     PLUS,
     MINUS,
     BANG,
@@ -39,7 +41,7 @@ pub enum TokenType {
     FALSE,
     IF,
     ELSE,
-    RETURN
+    RETURN,
 }
 
 pub struct Token {
@@ -98,7 +100,6 @@ impl Lexer {
             ("if".to_string(), TokenType::IF),
             ("else".to_string(), TokenType::ELSE),
             ("return".to_string(), TokenType::RETURN),
-
         ]);
         let mut l = Self {
             input,
@@ -116,16 +117,38 @@ impl Lexer {
         if self.read_position >= self.input.len() {
             self.is_eof = true;
         } else {
-            self.ch = self.input.chars().nth(self.read_position).unwrap(); // Consume the next char
+            // Consume the next char
+            // This is not 0(1), should have a Vec<char> instead
+            self.ch = self.input.chars().nth(self.read_position).unwrap();
         }
         self.position = self.read_position;
         self.read_position += 1;
     }
 
+    fn peek_char(&mut self) -> char {
+        if self.read_position < self.input.len() {
+            return self.input.chars().nth(self.read_position).unwrap();
+        }
+        panic!("Shouldn't have peeked char")
+    }
+
     fn next_token(&mut self) -> Token {
         self.ignore_whitespace();
         let token = match Token::match_char(self.ch, self.is_eof) {
-            TokenType::ASSIGN => Token::new(TokenType::ASSIGN, self.ch),
+            TokenType::ASSIGN => match self.peek_char() {
+                '=' => {
+                    self.read_char();
+                    Token::new(TokenType::EQUAL, "==")
+                }
+                _ => Token::new(TokenType::ASSIGN, self.ch),
+            },
+            TokenType::BANG => match self.peek_char() {
+                '=' => {
+                    self.read_char();
+                    Token::new(TokenType::NOTEQUAL, "!=")
+                }
+                _ => Token::new(TokenType::BANG, self.ch),
+            },
             TokenType::PLUS => Token::new(TokenType::PLUS, self.ch),
             TokenType::COMMA => Token::new(TokenType::COMMA, self.ch),
             TokenType::SEMICOLON => Token::new(TokenType::SEMICOLON, self.ch),
@@ -134,7 +157,6 @@ impl Lexer {
             TokenType::LBRACE => Token::new(TokenType::LBRACE, self.ch),
             TokenType::RBRACE => Token::new(TokenType::RBRACE, self.ch),
             TokenType::MINUS => Token::new(TokenType::MINUS, self.ch),
-            TokenType::BANG => Token::new(TokenType::BANG, self.ch),
             TokenType::ASTERISK => Token::new(TokenType::ASTERISK, self.ch),
             TokenType::SLASH => Token::new(TokenType::SLASH, self.ch),
             TokenType::LT => Token::new(TokenType::LT, self.ch),
@@ -150,12 +172,12 @@ impl Lexer {
                     let token_type = TokenType::INT;
                     return Token::new(token_type, literal);
                 } else {
-                    Token::new(TokenType::ILLEGAL, self.ch as char)
+                    return Token::new(TokenType::ILLEGAL, self.ch as char);
                 }
             }
         };
         self.read_char();
-        return token;
+        token
     }
 
     fn read_identifier(&mut self) -> String {
@@ -163,7 +185,7 @@ impl Lexer {
         while Lexer::is_letter(self.ch) {
             self.read_char();
         }
-        return self.input[position..self.position].to_string();
+        self.input[position..self.position].to_string()
     }
 
     fn read_number(&mut self) -> String {
@@ -171,22 +193,22 @@ impl Lexer {
         while Lexer::is_digit(self.ch) {
             self.read_char();
         }
-        return self.input[position..self.position].to_string();
+        self.input[position..self.position].to_string()
     }
 
     fn is_letter(ch: char) -> bool {
-        return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_';
+        'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
     }
 
     fn is_digit(ch: char) -> bool {
-        return '0' <= ch && ch <= '9';
+        '0' <= ch && ch <= '9'
     }
 
     fn find_indentifier(&self, literal: &String) -> TokenType {
         if let Some(token_type) = self.keywords.get(literal) {
             return token_type.clone();
         }
-        return TokenType::IDENT;
+        TokenType::IDENT
     }
 
     fn ignore_whitespace(&mut self) {
@@ -270,6 +292,14 @@ mod tests {
             (TokenType::FALSE, "false"),
             (TokenType::SEMICOLON, ";"),
             (TokenType::RBRACE, "}"),
+            (TokenType::INT, "10"),
+            (TokenType::EQUAL, "=="),
+            (TokenType::INT, "10"),
+            (TokenType::SEMICOLON, ";"),
+            (TokenType::INT, "10"),
+            (TokenType::NOTEQUAL, "!="),
+            (TokenType::INT, "9"),
+            (TokenType::SEMICOLON, ";"),
             (TokenType::EOF, ""),
         ];
         let mut lexer = Lexer::new(
@@ -285,6 +315,8 @@ mod tests {
             } else {
                 return false;
             }
+            10 == 10;
+            10 != 9;
             "
             .to_string(),
         );
