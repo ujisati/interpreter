@@ -46,7 +46,7 @@ pub enum TokenType {
 
 pub struct Token {
     token_type: TokenType,
-    literal: String,
+    pub literal: String,
 }
 
 impl Token {
@@ -82,7 +82,7 @@ impl Token {
 }
 
 pub struct Lexer {
-    input: String,
+    input: &'static str,
     position: usize,      // Current
     read_position: usize, // Current + 1
     ch: char,
@@ -91,7 +91,7 @@ pub struct Lexer {
 }
 
 impl Lexer {
-    pub fn new(input: String) -> Self {
+    pub fn new(input: &'static str) -> Self {
         let keywords = HashMap::from([
             ("fn".to_string(), TokenType::FUNCTION),
             ("let".to_string(), TokenType::LET),
@@ -318,7 +318,6 @@ mod tests {
             10 == 10;
             10 != 9;
             "
-            .to_string(),
         );
         for token in tokens.iter() {
             let tok = lexer.next_token();
