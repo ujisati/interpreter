@@ -1,23 +1,32 @@
 use crate::lexer::Token;
 
-pub struct Statement {}
+pub enum Statement {
+    Let(Let),
+}
+
+pub struct Let {
+    pub token: Token,
+    pub name: Identifier,
+    pub value: Expression,
+}
 
 impl Node for Let {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
 }
-struct Expression {}
 
-pub struct Let {
-    pub token: Token,
-    name: Identifier,
-    value: Expression,
-}
+pub struct Expression {}
 
 pub struct Identifier {
-    token: Token,
-    value: String,
+    pub token: Token,
+    pub value: String,
+}
+
+impl Node for Identifier {
+    fn token_literal(&self) -> String {
+        self.token.literal.clone()
+    }
 }
 
 pub trait Node {

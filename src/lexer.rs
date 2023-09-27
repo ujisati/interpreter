@@ -44,8 +44,9 @@ pub enum TokenType {
     RETURN,
 }
 
+#[derive(Clone)]
 pub struct Token {
-    token_type: TokenType,
+    pub token_type: TokenType,
     pub literal: String,
 }
 
@@ -317,7 +318,7 @@ mod tests {
             }
             10 == 10;
             10 != 9;
-            "
+            ",
         );
         for token in tokens.iter() {
             let tok = lexer.next_token();

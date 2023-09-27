@@ -1,17 +1,18 @@
 use anyhow::Result;
 
-use crate::ast::{Node, Statement};
-use crate::lexer::{Lexer, Token};
+use crate::ast::{Expression, Identifier, Let, Node, Statement};
+use crate::lexer::{Lexer, Token, TokenType};
 use std::mem;
+
+struct Program {
+    statements: Vec<Statement>,
+}
 
 struct Parser {
     lexer: Lexer,
     curr_token: Token,
     peek_token: Token,
-}
-
-struct Program {
-    statements: Vec<Statement>,
+    errors: Vec<String>,
 }
 
 impl Parser {
@@ -22,6 +23,7 @@ impl Parser {
             lexer,
             curr_token,
             peek_token,
+            errors: Vec::new(),
         }
     }
 
@@ -29,8 +31,77 @@ impl Parser {
         self.curr_token = mem::replace(&mut self.peek_token, self.lexer.next_token());
     }
 
-    pub fn parse(self) -> Result<Program> {
-        todo!()
+    pub fn parse(&mut self) -> Result<Program> {
+        let mut program = Program {
+            statements: Vec::new(),
+        };
+        while self.curr_token.token_type != TokenType::EOF {
+            let stmt = self.parse_statement();
+            if let Some(s) = stmt {
+                program.statements.push(s);
+            }
+            self.next_token();
+        }
+        Ok(program)
+    }
+
+    fn parse_statement(&mut self) -> Option<Statement> {
+        match self.curr_token.token_type {
+            TokenType::LET => self.parse_let_statement(),
+            _ => None,
+        }
+    }
+
+    fn parse_let_statement(&mut self) -> Option<Statement> {
+        // let stmt = Statement::Let(Let {
+        //     token: self.curr_token,
+        //     name
+        // });
+        let token = self.curr_token.clone();
+
+        if !self.peek_then_next(TokenType::IDENT) {
+            return None;
+        }
+
+        let identifier = Identifier {
+            token: self.curr_token.clone(),
+            value: self.curr_token.literal.clone(),
+        };
+
+        if !self.peek_then_next(TokenType::ASSIGN) {
+            return None;
+        }
+
+        // TODO: don't skip expressions
+        while !self.is_curr_token_expected(TokenType::SEMICOLON) {
+            self.next_token();
+        }
+
+        Some(Statement::Let(Let {
+            token,
+            name: identifier,
+            value: Expression {},
+        }))
+    }
+
+    fn is_curr_token_expected(&self, token_type: TokenType) -> bool {
+        self.curr_token.token_type == token_type
+    }
+
+    fn is_peek_token_expected(&self, token_type: TokenType) -> bool {
+        self.peek_token.token_type == token_type
+    }
+
+    fn peek_then_next(&mut self, token_type: TokenType) -> bool {
+        if self.is_peek_token_expected(token_type) {
+            self.next_token();
+            return true;
+        }
+        self.errors.push(format!(
+            "Expect next token to be {:?}, got {:?} instead",
+            token_type, self.peek_token.token_type
+        ));
+        return false;
     }
 }
 
@@ -46,9 +117,10 @@ mod tests {
             let foobar = 838383;
         ";
         let lexer = Lexer::new(input.into());
-        let parser = Parser::new(lexer);
+        let mut parser = Parser::new(lexer);
         let program = parser.parse().unwrap();
-        assert!(program.statements.len() != 3);
+        check_errors(parser);
+        assert!(program.statements.len() == 3);
         let expected_identifier = ["x", "y", "foobar"];
         for (i, e) in expected_identifier.iter().enumerate() {
             let stmt = &program.statements[i];
@@ -56,6 +128,30 @@ mod tests {
         }
     }
 
+    #[test]
+    #[should_panic]
+    fn test_parse_erros() {
+        let input = "
+            let x  5;
+        ";
+        let lexer = Lexer::new(input.into());
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse().unwrap();
+        check_errors(parser);
+    }
+
     fn check_let_statement(stmt: &Statement, expected: &str) {
+        let stmt = match stmt {
+            Statement::Let(stmt) => stmt,
+        };
+        assert_eq!(stmt.token_literal(), "let");
+        assert_eq!(stmt.name.value, expected);
+        assert_eq!(stmt.name.token_literal(), expected);
+    }
+
+    fn check_errors(parser: Parser) {
+        for error in parser.errors {
+            assert!(false, "Parser error: {}", error)
+        }
     }
 }
