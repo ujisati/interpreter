@@ -1,12 +1,9 @@
 use anyhow::Result;
 
-use crate::ast::{Expression, Identifier, Let, Node, Statement, Return};
+use crate::ast::{Expression, Identifier, Let, Node, Statement, Return, Program};
 use crate::lexer::{Lexer, Token, TokenType};
 use std::mem;
 
-struct Program {
-    statements: Vec<Statement>,
-}
 
 struct Parser {
     lexer: Lexer,
