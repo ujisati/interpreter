@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::ast::{Expression, Identifier, Let, Node, Statement};
+use crate::ast::{Expression, Identifier, Let, Node, Statement, Return};
 use crate::lexer::{Lexer, Token, TokenType};
 use std::mem;
 
@@ -48,7 +48,9 @@ impl Parser {
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.curr_token.token_type {
             TokenType::LET => self.parse_let_statement(),
-            _ => None,
+            TokenType::RETURN => self.parse_return_statement(),
+            _ => None
+            
         }
     }
 
@@ -80,7 +82,7 @@ impl Parser {
         Some(Statement::Let(Let {
             token,
             name: identifier,
-            value: Expression {},
+            value: Expression::None,
         }))
     }
 
@@ -102,6 +104,18 @@ impl Parser {
             token_type, self.peek_token.token_type
         ));
         return false;
+    }
+
+    fn parse_return_statement(&mut self) -> Option<Statement> {
+        let token = self.curr_token.clone();
+        self.next_token();
+        while !self.is_curr_token_expected(TokenType::SEMICOLON) {
+            self.next_token(); 
+        }
+        return Some(Statement::Return(Return {
+            token,
+            return_value: Expression::None // TODO: make expression
+        }))
     }
 }
 
@@ -143,6 +157,7 @@ mod tests {
     fn check_let_statement(stmt: &Statement, expected: &str) {
         let stmt = match stmt {
             Statement::Let(stmt) => stmt,
+            _ => panic!("This shouldn't happen"),
         };
         assert_eq!(stmt.token_literal(), "let");
         assert_eq!(stmt.name.value, expected);
@@ -152,6 +167,27 @@ mod tests {
     fn check_errors(parser: Parser) {
         for error in parser.errors {
             assert!(false, "Parser error: {}", error)
+        }
+    }
+
+    #[test]
+    fn test_return_statement() {
+        let input = "
+            return 5;
+            return 10;
+            return 993322;
+        ";
+        let lexer = Lexer::new(input.into());
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse().unwrap();
+
+        assert!(program.statements.len() == 3);
+        for stmt in program.statements {
+            let stmt = match stmt {
+                Statement::Return(s) => s,
+                _ => panic!("This shouldn't happen"),
+            };
+            assert_eq!(stmt.token_literal(), "return")
         }
     }
 }
