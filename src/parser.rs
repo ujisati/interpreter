@@ -33,6 +33,8 @@ impl Parser {
         let mut prefix_parse_fns = HashMap::<TokenType, fn(&mut Parser) -> Expression>::new();
         prefix_parse_fns.insert(TokenType::IDENT, parse_fns::parse_identifier);
         prefix_parse_fns.insert(TokenType::INT, parse_fns::parse_integer);
+        prefix_parse_fns.insert(TokenType::BANG, parse_fns::parse_prefix_expression);
+        prefix_parse_fns.insert(TokenType::MINUS, parse_fns::parse_prefix_expression);
         Self {
             lexer,
             curr_token,
@@ -151,13 +153,18 @@ impl Parser {
     fn parse_expression(&mut self, precedence: Precedence) -> Expression {
         let prefix = match self.prefix_parse_fns.get(&self.curr_token.token_type) {
             Some(f) => f,
-            None => return Expression::None,
+            None => {
+                // TODO: impl display for token type and add failure to errors
+                return Expression::None;
+            }
         };
         prefix(self)
     }
 }
 
 mod parse_fns {
+    use crate::ast::Prefix;
+
     use super::*;
 
     pub fn parse_identifier(p: &mut Parser) -> Expression {
@@ -182,6 +189,17 @@ mod parse_fns {
         Expression::Integer(Integer {
             token: p.curr_token.clone(),
             value,
+        })
+    }
+
+    pub fn parse_prefix_expression(p: &mut Parser) -> Expression {
+        let token = p.curr_token.clone();
+        p.next_token();
+        let right = p.parse_expression(Precedence::Prefix);
+        Expression::Prefix(Prefix {
+            operator: token.literal.clone(),
+            token,
+            right: Box::new(right),
         })
     }
 }
@@ -299,5 +317,36 @@ mod tests {
 
         assert!(ident.value == 5);
         assert!(ident.token_literal() == "5");
+    }
+
+    #[test]
+    fn test_parsing_prefix_expression() {
+        let prefix_tests = [("!5;", "!", 5), ("-15;", "-", 15)];
+        for (input, op, val) in prefix_tests {
+            let lexer = Lexer::new(input.into());
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse().unwrap();
+            check_errors(parser);
+            assert!(program.statements.len() == 1);
+            let exp_stmt = match &program.statements[0] {
+                Statement::ExpressionStmt(s) => s,
+                _ => panic!("Expected expression statement"),
+            };
+            let prefix = match &exp_stmt.expression {
+                Expression::Prefix(o) => o,
+                _ => panic!("Expected prefix expression"),
+            };
+            assert!(prefix.operator == op);
+            check_integer_literal(prefix.right.as_ref(), val);
+        }
+    }
+
+    fn check_integer_literal(exp: &Expression, value: i64) {
+        let int = match exp {
+            Expression::Integer(i) => i,
+            _ => panic!("Expected integer expression"),
+        };
+        assert!(int.value == value);
+        assert!(int.token_literal() == format!("{}", value))
     }
 }

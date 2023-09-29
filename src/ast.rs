@@ -36,6 +36,13 @@ pub enum Expression {
     None, //FIXME: remove this
     Identifier(Identifier),
     Integer(Integer),
+    Prefix(Prefix)
+}
+
+pub struct Prefix {
+    pub token: Token,
+    pub operator: String,
+    pub right: Box<Expression>
 }
 
 impl DebugString for Expression {
