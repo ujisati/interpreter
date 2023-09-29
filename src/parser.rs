@@ -1,14 +1,26 @@
 use anyhow::Result;
 
-use crate::ast::{Expression, Identifier, Let, Node, Statement, Return, Program};
+use crate::ast::{Expression, ExpressionStmt, Identifier, Let, Node, Program, Return, Statement};
 use crate::lexer::{Lexer, Token, TokenType};
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::mem;
 
+enum Precedence {
+    Lowest,
+    Equals,
+    LessGreater,
+    Sum,
+    Product,
+    Prefix,
+    Call,
+}
 
-struct Parser {
+pub struct Parser {
     lexer: Lexer,
-    curr_token: Token,
+    pub curr_token: Token,
     peek_token: Token,
+    prefix_parse_fns: HashMap<TokenType, fn(&Parser) -> Expression>,
     errors: Vec<String>,
 }
 
@@ -16,10 +28,13 @@ impl Parser {
     pub fn new(mut lexer: Lexer) -> Parser {
         let curr_token = lexer.next_token();
         let peek_token = lexer.next_token();
+        let mut prefix_parse_fns = HashMap::new();
+        prefix_parse_fns.insert(TokenType::IDENT, parse_fns::parse_identifier as fn(&Parser) -> Expression);
         Self {
             lexer,
             curr_token,
             peek_token,
+            prefix_parse_fns,
             errors: Vec::new(),
         }
     }
@@ -46,8 +61,7 @@ impl Parser {
         match self.curr_token.token_type {
             TokenType::LET => self.parse_let_statement(),
             TokenType::RETURN => self.parse_return_statement(),
-            _ => None
-            
+            _ => self.parse_expression_statement(),
         }
     }
 
@@ -106,18 +120,53 @@ impl Parser {
     fn parse_return_statement(&mut self) -> Option<Statement> {
         let token = self.curr_token.clone();
         self.next_token();
+
         while !self.is_curr_token_expected(TokenType::SEMICOLON) {
-            self.next_token(); 
+            self.next_token();
         }
         return Some(Statement::Return(Return {
             token,
-            return_value: Expression::None // TODO: make expression
+            return_value: Expression::None, // TODO: make expression
+        }));
+    }
+
+    fn parse_expression_statement(&mut self) -> Option<Statement> {
+        let token = self.curr_token.clone();
+        let expression = self.parse_expression(Precedence::Lowest);
+
+        // WARNING: this is the root of all evil
+        if self.is_peek_token_expected(TokenType::SEMICOLON) {
+            self.next_token();
+        }
+
+        Some(Statement::ExpressionStmt(ExpressionStmt {
+            token,
+            expression,
         }))
+    }
+
+    fn parse_expression(&self, precedence: Precedence) -> Expression {
+        let prefix = match self.prefix_parse_fns.get(&self.curr_token.token_type) {
+            Some(f) => f,
+            None => return Expression::None,
+        };
+        prefix(&self)
+    }
+}
+
+mod parse_fns {
+    use super::*;
+    pub fn parse_identifier(p: &Parser) -> Expression {
+        return Expression::Identifier(Identifier {
+            token: p.curr_token.clone(),
+            value: p.curr_token.literal.clone(),
+        });
     }
 }
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
@@ -186,5 +235,26 @@ mod tests {
             };
             assert_eq!(stmt.token_literal(), "return")
         }
+    }
+
+    #[test]
+    fn test_identifier_expression() {
+        let input = "foobar;";
+        let lexer = Lexer::new(input.into());
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse().unwrap();
+        check_errors(parser);
+        assert!(program.statements.len() == 1);
+        let exp_stmt = match &program.statements[0] {
+            Statement::ExpressionStmt(s) => s,
+            _ => panic!("Expected expression statement"),
+        };
+        let ident = match &exp_stmt.expression {
+            Expression::Identifier(i) => i,
+            _ => panic!("Expected identifier expression"),
+        };
+
+        assert!(ident.value == "foobar");
+        assert!(ident.token_literal() == "foobar");
     }
 }

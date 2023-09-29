@@ -48,8 +48,8 @@ impl DebugString for Expression {
 
 #[derive(Node)]
 pub struct ExpressionStmt {
-    token: Token,
-    expression: Expression,
+    pub token: Token,
+    pub expression: Expression,
 }
 
 impl DebugString for ExpressionStmt {
