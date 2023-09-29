@@ -35,6 +35,7 @@ impl DebugString for Statement {
 pub enum Expression {
     None, //FIXME: remove this
     Identifier(Identifier),
+    Integer(Integer),
 }
 
 impl DebugString for Expression {
@@ -87,6 +88,18 @@ impl DebugString for Return {
 pub struct Identifier {
     pub token: Token,
     pub value: String,
+}
+
+#[derive(Node)]
+pub struct Integer {
+    pub token: Token,
+    pub value: i64,
+}
+
+impl DebugString for Integer {
+    fn repr(&self) -> String {
+        self.value.clone().to_string()
+    }
 }
 
 impl DebugString for Identifier {

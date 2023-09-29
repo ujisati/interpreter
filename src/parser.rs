@@ -1,6 +1,8 @@
 use anyhow::Result;
 
-use crate::ast::{Expression, ExpressionStmt, Identifier, Let, Node, Program, Return, Statement};
+use crate::ast::{
+    Expression, ExpressionStmt, Identifier, Integer, Let, Node, Program, Return, Statement,
+};
 use crate::lexer::{Lexer, Token, TokenType};
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -20,7 +22,7 @@ pub struct Parser {
     lexer: Lexer,
     pub curr_token: Token,
     peek_token: Token,
-    prefix_parse_fns: HashMap<TokenType, fn(&Parser) -> Expression>,
+    prefix_parse_fns: HashMap<TokenType, fn(&mut Parser) -> Expression>,
     errors: Vec<String>,
 }
 
@@ -28,8 +30,9 @@ impl Parser {
     pub fn new(mut lexer: Lexer) -> Parser {
         let curr_token = lexer.next_token();
         let peek_token = lexer.next_token();
-        let mut prefix_parse_fns = HashMap::new();
-        prefix_parse_fns.insert(TokenType::IDENT, parse_fns::parse_identifier as fn(&Parser) -> Expression);
+        let mut prefix_parse_fns = HashMap::<TokenType, fn(&mut Parser) -> Expression>::new();
+        prefix_parse_fns.insert(TokenType::IDENT, parse_fns::parse_identifier);
+        prefix_parse_fns.insert(TokenType::INT, parse_fns::parse_integer);
         Self {
             lexer,
             curr_token,
@@ -145,22 +148,41 @@ impl Parser {
         }))
     }
 
-    fn parse_expression(&self, precedence: Precedence) -> Expression {
+    fn parse_expression(&mut self, precedence: Precedence) -> Expression {
         let prefix = match self.prefix_parse_fns.get(&self.curr_token.token_type) {
             Some(f) => f,
             None => return Expression::None,
         };
-        prefix(&self)
+        prefix(self)
     }
 }
 
 mod parse_fns {
     use super::*;
-    pub fn parse_identifier(p: &Parser) -> Expression {
+
+    pub fn parse_identifier(p: &mut Parser) -> Expression {
         return Expression::Identifier(Identifier {
             token: p.curr_token.clone(),
             value: p.curr_token.literal.clone(),
         });
+    }
+
+    pub fn parse_integer(p: &mut Parser) -> Expression {
+        let value = match p.curr_token.literal.parse::<i64>() {
+            Ok(v) => v,
+            Err(v) => {
+                p.errors.push(format!(
+                    "Could not parse {} as integer",
+                    p.curr_token.literal
+                ));
+                return Expression::None;
+            }
+        };
+
+        Expression::Integer(Integer {
+            token: p.curr_token.clone(),
+            value,
+        })
     }
 }
 
@@ -256,5 +278,26 @@ mod tests {
 
         assert!(ident.value == "foobar");
         assert!(ident.token_literal() == "foobar");
+    }
+
+    #[test]
+    fn test_integer_literal_expression() {
+        let input = "5;";
+        let lexer = Lexer::new(input.into());
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse().unwrap();
+        check_errors(parser);
+        assert!(program.statements.len() == 1);
+        let exp_stmt = match &program.statements[0] {
+            Statement::ExpressionStmt(s) => s,
+            _ => panic!("Expected expression statement"),
+        };
+        let ident = match &exp_stmt.expression {
+            Expression::Integer(i) => i,
+            _ => panic!("Expected integer expression"),
+        };
+
+        assert!(ident.value == 5);
+        assert!(ident.token_literal() == "5");
     }
 }
