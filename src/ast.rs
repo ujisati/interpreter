@@ -36,19 +36,58 @@ pub enum Expression {
     None, //FIXME: remove this
     Identifier(Identifier),
     Integer(Integer),
-    Prefix(Prefix)
+    Prefix(Prefix),
+    Infix(Infix),
 }
 
+
+#[derive(Node)]
 pub struct Prefix {
     pub token: Token,
     pub operator: String,
     pub right: Box<Expression>
 }
 
+#[derive(Node)]
+pub struct Infix {
+    pub token: Token,
+    pub operator: String,
+    pub left: Box<Expression>,
+    pub right: Box<Expression>
+}
+
+impl DebugString for Infix {
+    fn repr(&self) -> String {
+        let mut output = String::new();
+        output.push('(');
+        output.push_str(&self.left.repr());
+        output.push(' ');
+        output.push_str(&self.operator);
+        output.push(' ');
+        output.push_str(&self.right.repr());
+        output.push(')');
+        output
+    }
+}
+
+impl DebugString for Prefix {
+    fn repr(&self) -> String {
+        let mut output = String::new();
+        output.push('(');
+        output.push_str(&self.operator);
+        output.push_str(&self.right.repr());
+        output.push(')');
+        output
+    }
+}
+
+
 impl DebugString for Expression {
     fn repr(&self) -> String {
         match self {
             Self::Identifier(s) => s.repr(),
+            Self::Prefix(p) => p.repr(),
+            Self::Infix(i) => i.repr(),
             _ => panic!("fix this"),
         }
     }
