@@ -32,6 +32,7 @@ impl DebugString for Statement {
     }
 }
 
+#[derive(Debug)]
 pub enum Expression {
     None, //FIXME: remove this
     Identifier(Identifier),
@@ -41,14 +42,14 @@ pub enum Expression {
 }
 
 
-#[derive(Node)]
+#[derive(Node, Debug)]
 pub struct Prefix {
     pub token: Token,
     pub operator: String,
     pub right: Box<Expression>
 }
 
-#[derive(Node)]
+#[derive(Node, Debug)]
 pub struct Infix {
     pub token: Token,
     pub operator: String,
@@ -88,7 +89,8 @@ impl DebugString for Expression {
             Self::Identifier(s) => s.repr(),
             Self::Prefix(p) => p.repr(),
             Self::Infix(i) => i.repr(),
-            _ => panic!("fix this"),
+            Self::Integer(i) => i.repr(),
+            _ => panic!("Expression not found"),
         }
     }
 }
@@ -130,13 +132,13 @@ impl DebugString for Return {
     }
 }
 
-#[derive(Node)]
+#[derive(Node, Debug)]
 pub struct Identifier {
     pub token: Token,
     pub value: String,
 }
 
-#[derive(Node)]
+#[derive(Node, Debug)]
 pub struct Integer {
     pub token: Token,
     pub value: i64,

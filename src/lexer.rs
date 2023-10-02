@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 /// Rust only allows enum discriminant to be an integer
 /// Token::match_char handles matching TokenType to char
@@ -44,7 +44,8 @@ pub enum TokenType {
     RETURN,
 }
 
-#[derive(Clone)]
+
+#[derive(Clone, Debug)]
 pub struct Token {
     pub token_type: TokenType,
     pub literal: String,
@@ -164,11 +165,11 @@ impl Lexer {
             TokenType::GT => Token::new(TokenType::GT, self.ch),
             TokenType::EOF => Token::new(TokenType::EOF, ""),
             _ => {
-                if Lexer::is_letter(self.ch) {
+                if Lexer::is_letter(self.ch, self.is_eof) {
                     let literal = self.read_identifier();
                     let token_type = self.find_indentifier(&literal);
                     return Token::new(token_type, literal);
-                } else if Lexer::is_digit(self.ch) {
+                } else if Lexer::is_digit(self.ch, self.is_eof) {
                     let literal = self.read_number();
                     let token_type = TokenType::INT;
                     return Token::new(token_type, literal);
@@ -183,7 +184,7 @@ impl Lexer {
 
     fn read_identifier(&mut self) -> String {
         let position = self.position;
-        while Lexer::is_letter(self.ch) {
+        while Lexer::is_letter(self.ch, self.is_eof) {
             self.read_char();
         }
         self.input[position..self.position].to_string()
@@ -191,17 +192,23 @@ impl Lexer {
 
     fn read_number(&mut self) -> String {
         let position = self.position;
-        while Lexer::is_digit(self.ch) {
+        while Lexer::is_digit(self.ch, self.is_eof) {
             self.read_char();
         }
         self.input[position..self.position].to_string()
     }
 
-    fn is_letter(ch: char) -> bool {
+    fn is_letter(ch: char, is_eof: bool) -> bool {
+        if is_eof {
+            return false;
+        }
         'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
     }
 
-    fn is_digit(ch: char) -> bool {
+    fn is_digit(ch: char, is_eof: bool) -> bool {
+        if is_eof {
+            return false;
+        }
         '0' <= ch && ch <= '9'
     }
 
@@ -329,14 +336,14 @@ mod tests {
 
     #[test]
     fn test_is_letter() {
-        assert_eq!(Lexer::is_letter('a'), true);
-        assert_eq!(Lexer::is_letter('z'), true);
-        assert_eq!(Lexer::is_letter('A'), true);
-        assert_eq!(Lexer::is_letter('Z'), true);
-        assert_eq!(Lexer::is_letter('_'), true);
-        assert_eq!(Lexer::is_letter('0'), false);
-        assert_eq!(Lexer::is_letter('9'), false);
-        assert_eq!(Lexer::is_letter(' '), false);
-        assert_eq!(Lexer::is_letter('\t'), false);
+        assert_eq!(Lexer::is_letter('a', false), true);
+        assert_eq!(Lexer::is_letter('z', false), true);
+        assert_eq!(Lexer::is_letter('A', false), true);
+        assert_eq!(Lexer::is_letter('Z', false), true);
+        assert_eq!(Lexer::is_letter('_', false), true);
+        assert_eq!(Lexer::is_letter('0', false), false);
+        assert_eq!(Lexer::is_letter('9', false), false);
+        assert_eq!(Lexer::is_letter(' ', false), false);
+        assert_eq!(Lexer::is_letter('\t', false), false);
     }
 }
