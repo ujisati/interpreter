@@ -308,12 +308,12 @@ mod parse_fns {
 
 #[cfg(test)]
 mod tests {
-
-    use ntest::timeout;
-
-    use crate::ast::DebugString;
-
     use super::*;
+
+    enum ExpectedTypes {
+        Integer(i64),
+        Identifier(String),
+    }
 
     fn init() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -451,13 +451,14 @@ mod tests {
         }
     }
 
-    fn check_integer_literal(exp: &Expression, value: i64) {
+    fn check_integer_literal(exp: &Expression, value: i64) -> bool {
         let int = match exp {
             Expression::Integer(i) => i,
             _ => panic!("Expected integer expression"),
         };
         assert!(int.value == value);
-        assert!(int.token_literal() == format!("{}", value))
+        assert!(int.token_literal() == format!("{}", value));
+        return true;
     }
 
     #[test]
@@ -523,4 +524,33 @@ mod tests {
             // assert_eq!(actual, *expected,"{}, {}", actual, *expected);
         }
     }
+
+    fn check_identifier(expression: Expression, value: String) -> bool {
+        let ident = match expression {
+            Expression::Identifier(i) => i,
+            _ => panic!("Expected identifier")
+        };
+        assert!(ident.value == value);
+        assert!(ident.token_literal() == value);
+        return true;
+    }
+
+    fn check_literal_expression(expression: Expression, expected_type: ExpectedTypes) -> bool {
+        match expected_type {
+            ExpectedTypes::Integer(i) => return check_integer_literal(&expression, i),
+            ExpectedTypes::Identifier(i) => return check_identifier(expression, i),
+        }
+    }
+
+    fn check_infix_expression(expression: Expression, left: ExpectedTypes, op: String, right: ExpectedTypes) -> bool {
+        let exp = match expression {
+            Expression::Infix(i) => i,
+            _ => panic!("Expected infix")
+        };
+        assert!(check_literal_expression(*exp.left, left));
+        assert!(exp.operator == op);
+        assert!(check_literal_expression(*exp.right, right));
+        return true;
+    }
+
 }
