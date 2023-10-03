@@ -1,6 +1,12 @@
 use macros::Node;
 
-use crate::lexer::Token;
+use crate::lexer::{Token, TokenType};
+
+#[derive(Node, Debug)]
+pub struct Boolean {
+    pub token: Token,
+    pub value: bool,
+}
 
 pub struct Program {
     pub statements: Vec<Statement>,
@@ -39,6 +45,7 @@ pub enum Expression {
     Integer(Integer),
     Prefix(Prefix),
     Infix(Infix),
+    Boolean(Boolean)
 }
 
 
@@ -100,6 +107,7 @@ pub struct ExpressionStmt {
     pub token: Token,
     pub expression: Expression,
 }
+
 
 impl DebugString for ExpressionStmt {
     fn repr(&self) -> String {
