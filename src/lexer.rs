@@ -5,7 +5,7 @@ use std::{collections::HashMap, fmt::Display};
 /// The Lexer keywords HashMap handles matching TokenType to keywords
 /// I want to refactor that at somepoint, but it was the most simple
 /// translation from Thorsten Ball's Go code for me at the time.
-#[derive(PartialEq, Eq, Hash, Debug,  Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
 pub enum TokenType {
     ILLEGAL,
     EOF,
@@ -43,7 +43,6 @@ pub enum TokenType {
     ELSE,
     RETURN,
 }
-
 
 #[derive(Clone, Debug)]
 pub struct Token {

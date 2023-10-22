@@ -42,6 +42,7 @@ impl Parser {
         prefix_parse_fns.insert(TokenType::MINUS, parse_fns::parse_prefix_expression);
         prefix_parse_fns.insert(TokenType::TRUE, parse_fns::parse_boolean_expression);
         prefix_parse_fns.insert(TokenType::FALSE, parse_fns::parse_boolean_expression);
+        prefix_parse_fns.insert(TokenType::LPAREN, parse_fns::parse_grouped_expression);
         let mut infix_parse_fns =
             HashMap::<TokenType, fn(&mut Parser, Expression) -> Expression>::new();
         infix_parse_fns.insert(TokenType::PLUS, parse_fns::parse_infix_expression);
@@ -249,6 +250,15 @@ mod parse_fns {
 
     use super::*;
 
+    pub fn parse_grouped_expression(p: &mut Parser) -> Expression {
+        p.next_token();
+        let expression = p.parse_expression(Precedence::Lowest);
+        if !p.is_peek_token_expected(TokenType::RPAREN) {
+            return Expression::None;
+        }
+        return expression;
+    }
+
     pub fn parse_boolean_expression(p: &mut Parser) -> Expression {
         Expression::Boolean(Boolean {
             token: p.curr_token.clone(),
@@ -319,7 +329,7 @@ mod parse_fns {
 mod tests {
     use super::*;
 
-    enum ExpectedTypes {
+    enum Type {
         Integer(i64),
         Identifier(String),
         Bool(bool),
@@ -441,7 +451,12 @@ mod tests {
 
     #[test]
     fn test_parsing_prefix_expression() {
-        let prefix_tests = [("!5;", "!", 5), ("-15;", "-", 15)];
+        let prefix_tests = [
+            ("!5;", "!", Type::Integer(5)),
+            ("-15;", "-", Type::Integer(15)),
+            ("!true;", "!", Type::Bool(true)),
+            ("!false;", "!", Type::Bool(false)),
+        ];
         for (input, op, val) in prefix_tests {
             let lexer = Lexer::new(input.into());
             let mut parser = Parser::new(lexer);
@@ -457,7 +472,7 @@ mod tests {
                 _ => panic!("Expected prefix expression"),
             };
             assert!(prefix.operator == op);
-            check_integer_literal(prefix.right.as_ref(), val);
+            check_literal_expression(prefix.right.as_ref(), val);
         }
     }
 
@@ -502,7 +517,6 @@ mod tests {
             check_integer_literal(infix.right.as_ref(), right);
         }
 
-
         let infix_tests_bool = [
             ("true == true;", true, "==", true),
             ("true != false;", true, "!=", false),
@@ -523,10 +537,15 @@ mod tests {
                 _ => panic!("Expected infix expression"),
             };
             assert!(infix.operator == op);
-            assert!(check_literal_expression(infix.left.as_ref(), ExpectedTypes::Bool(left)));
-            assert!(check_literal_expression(infix.right.as_ref(), ExpectedTypes::Bool(right)));
+            assert!(check_literal_expression(
+                infix.left.as_ref(),
+                Type::Bool(left)
+            ));
+            assert!(check_literal_expression(
+                infix.right.as_ref(),
+                Type::Bool(right)
+            ));
         }
-
     }
 
     #[test]
@@ -550,8 +569,12 @@ mod tests {
             ),
             ("true", "true"),
             ("false", "false"),
-            ("3 > 5 == false", "(3 > 5 == false)"),
-            ("3 < 5 == true", "((3 < 5 == true))"),
+            ("3 > 5 == false", "((3 > 5) == false)"),
+            ("3 < 5 == true", "((3 < 5) == true)"),
+            // ("(5 + 5) * 2", "((5 + 5) * 2)"),
+            // ("2 / (5 + 5)", "(2 / (5 + 5))"),
+            // ("-(5 + 5)", "(-(5 + 5))"),
+            // ("!(true == true)", "(!(true == true))"),
         ];
 
         for (input, expected) in tests.iter() {
@@ -559,9 +582,9 @@ mod tests {
             let mut parser = Parser::new(lexer);
             let program = parser.parse().unwrap();
             check_errors(parser);
-            //
-            // let actual = program.repr();
-            // assert_eq!(actual, *expected,"{}, {}", actual, *expected);
+
+            let actual = program.repr();
+            assert_eq!(actual, *expected, "{}, {}", actual, *expected);
         }
     }
 
@@ -575,20 +598,15 @@ mod tests {
         return true;
     }
 
-    fn check_literal_expression(expression: &Expression, expected_type: ExpectedTypes) -> bool {
+    fn check_literal_expression(expression: &Expression, expected_type: Type) -> bool {
         match expected_type {
-            ExpectedTypes::Integer(i) => return check_integer_literal(expression, i),
-            ExpectedTypes::Identifier(i) => return check_identifier(expression, i),
-            ExpectedTypes::Bool(b) => return check_boolean_literal(expression, b)
+            Type::Integer(i) => return check_integer_literal(expression, i),
+            Type::Identifier(i) => return check_identifier(expression, i),
+            Type::Bool(b) => return check_boolean_literal(expression, b),
         }
     }
 
-    fn check_infix_expression(
-        expression: Expression,
-        left: ExpectedTypes,
-        op: String,
-        right: ExpectedTypes,
-    ) -> bool {
+    fn check_infix_expression(expression: Expression, left: Type, op: String, right: Type) -> bool {
         let exp = match expression {
             Expression::Infix(i) => i,
             _ => panic!("Expected infix"),

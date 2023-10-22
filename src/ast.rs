@@ -45,15 +45,14 @@ pub enum Expression {
     Integer(Integer),
     Prefix(Prefix),
     Infix(Infix),
-    Boolean(Boolean)
+    Boolean(Boolean),
 }
-
 
 #[derive(Node, Debug)]
 pub struct Prefix {
     pub token: Token,
     pub operator: String,
-    pub right: Box<Expression>
+    pub right: Box<Expression>,
 }
 
 #[derive(Node, Debug)]
@@ -61,7 +60,7 @@ pub struct Infix {
     pub token: Token,
     pub operator: String,
     pub left: Box<Expression>,
-    pub right: Box<Expression>
+    pub right: Box<Expression>,
 }
 
 impl DebugString for Infix {
@@ -89,7 +88,6 @@ impl DebugString for Prefix {
     }
 }
 
-
 impl DebugString for Expression {
     fn repr(&self) -> String {
         match self {
@@ -97,7 +95,8 @@ impl DebugString for Expression {
             Self::Prefix(p) => p.repr(),
             Self::Infix(i) => i.repr(),
             Self::Integer(i) => i.repr(),
-            _ => panic!("Expression not found"),
+            Self::Boolean(b) => b.repr(),
+            _ => panic!("Expression not found: {:?}", self),
         }
     }
 }
@@ -107,7 +106,6 @@ pub struct ExpressionStmt {
     pub token: Token,
     pub expression: Expression,
 }
-
 
 impl DebugString for ExpressionStmt {
     fn repr(&self) -> String {
@@ -161,6 +159,12 @@ impl DebugString for Integer {
 impl DebugString for Identifier {
     fn repr(&self) -> String {
         self.value.clone()
+    }
+}
+
+impl DebugString for Boolean {
+    fn repr(&self) -> String {
+        self.value.to_string()
     }
 }
 
