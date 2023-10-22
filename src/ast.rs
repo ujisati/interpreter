@@ -60,11 +60,11 @@ pub struct Boolean {
 }
 
 #[derive(Node, Debug)]
-struct If {
-    token: Token,
-    condition: Box<Expression>,
-    consequence: Program,
-    alternative: Program,
+pub struct If {
+    pub token: Token,
+    pub condition: Box<Expression>,
+    pub consequence: Box<Statement>,
+    pub alternative: Box<Statement>
 }
 
 #[derive(Debug)]
@@ -72,6 +72,7 @@ pub enum Statement {
     Let(Let),
     Return(Return),
     ExpressionStmt(ExpressionStmt),
+    Block(Block)
 }
 
 #[derive(Node, Debug)]
@@ -93,6 +94,11 @@ pub struct ExpressionStmt {
     pub expression: Expression,
 }
 
+#[derive(Node, Debug)]
+pub struct Block {
+    token: Token,
+    statements: Vec<Statement>
+}
 
 impl DebugString for Program {
     fn repr(&self) -> String {
@@ -110,6 +116,7 @@ impl DebugString for Statement {
             Self::Let(s) => s.repr(),
             Self::Return(s) => s.repr(),
             Self::ExpressionStmt(s) => s.repr(),
+            Self::Block(s) => s.repr()
         }
     }
 }
@@ -188,11 +195,36 @@ impl DebugString for Boolean {
     }
 }
 
-impl DebugString for If {
+impl DebugString for Block {
     fn repr(&self) -> String {
-        todo!()
+        let mut output = String::new(); 
+        for s in &self.statements {
+            output.push_str(s.repr().as_str());
+        }
+        output
     }
 }
+
+impl DebugString for If {
+    fn repr(&self) -> String {
+        let mut output = String::new();
+        output.push_str("if");
+        output.push_str(&self.condition.repr());
+        output.push(' ');
+        output.push_str(&self.consequence.repr());
+        match self.alternative.as_ref() {
+            Statement::Block(b) => {
+                if b.statements.len() > 0 {
+                    output.push_str("else");
+                    output.push_str(&self.alternative.repr());
+                }
+            }
+            _ => panic!("Expected block")
+        }
+        output
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
