@@ -330,8 +330,8 @@ mod tests {
     use super::*;
 
     enum Type {
-        Integer(i64),
-        Identifier(String),
+        Int(i64),
+        Str(String),
         Bool(bool),
     }
 
@@ -452,8 +452,8 @@ mod tests {
     #[test]
     fn test_parsing_prefix_expression() {
         let prefix_tests = [
-            ("!5;", "!", Type::Integer(5)),
-            ("-15;", "-", Type::Integer(15)),
+            ("!5;", "!", Type::Int(5)),
+            ("-15;", "-", Type::Int(15)),
             ("!true;", "!", Type::Bool(true)),
             ("!false;", "!", Type::Bool(false)),
         ];
@@ -601,13 +601,13 @@ mod tests {
 
     fn check_literal_expression(expression: &Expression, expected_type: Type) -> bool {
         match expected_type {
-            Type::Integer(i) => return check_integer_literal(expression, i),
-            Type::Identifier(i) => return check_identifier(expression, i),
+            Type::Int(i) => return check_integer_literal(expression, i),
+            Type::Str(i) => return check_identifier(expression, i),
             Type::Bool(b) => return check_boolean_literal(expression, b),
         }
     }
 
-    fn check_infix_expression(expression: Expression, left: Type, op: String, right: Type) -> bool {
+    fn check_infix_expression(expression: &Expression, left: Type, op: String, right: Type) -> bool {
         let exp = match expression {
             Expression::Infix(i) => i,
             _ => panic!("Expected infix"),
@@ -626,5 +626,40 @@ mod tests {
         assert!(exp.value == value, "expected {} got {}", value, exp.value);
         assert!(exp.token_literal() == value.to_string());
         return true;
+    }
+    
+    #[test]
+    fn test_if_expression() {
+        let input = "if (x < y) { x }";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse().unwrap();
+        check_errors(parser);
+        assert!(program.statements.len() == 1);
+        let exp_stmt = match &program.statements[0] {
+            Statement::ExpressionStmt(s) => s,
+            _ => panic!("Expected expression statement"),
+        };
+        let if_stmt = match &exp_stmt.expression {
+            Expression::If(i) => i,
+            _ => panic!("Expected if expression"),
+        };
+        check_infix_expression(if_stmt.condition.as_ref(), Type::Str("x".into()), "<".into(), Type::Str("y".into()));
+        let statements = match if_stmt.consequence.as_ref() {
+            Statement::Block(b) => &b.statements,
+            _ => panic!("Expected block")
+        };
+        assert!(statements.len() == 1);
+
+        let consequence = match &statements[0] {
+            Statement::ExpressionStmt(s) => s,
+            _ => panic!("Expected expression stmt")
+        };
+        check_identifier(&consequence.expression, "x".into());
+        let alt_statements = match if_stmt.alternative.as_ref() {
+            Statement::Block(b) => &b.statements,
+            _ => panic!("Expected block")
+        };
+        assert!(alt_statements.len() == 0);
     }
 }

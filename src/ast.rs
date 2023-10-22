@@ -96,8 +96,8 @@ pub struct ExpressionStmt {
 
 #[derive(Node, Debug)]
 pub struct Block {
-    token: Token,
-    statements: Vec<Statement>
+    pub token: Token,
+    pub statements: Vec<Statement>
 }
 
 impl DebugString for Program {
