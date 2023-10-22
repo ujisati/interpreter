@@ -253,7 +253,7 @@ mod parse_fns {
     pub fn parse_grouped_expression(p: &mut Parser) -> Expression {
         p.next_token();
         let expression = p.parse_expression(Precedence::Lowest);
-        if !p.is_peek_token_expected(TokenType::RPAREN) {
+        if !p.peek_then_next(TokenType::RPAREN) {
             return Expression::None;
         }
         return expression;
@@ -571,10 +571,11 @@ mod tests {
             ("false", "false"),
             ("3 > 5 == false", "((3 > 5) == false)"),
             ("3 < 5 == true", "((3 < 5) == true)"),
-            // ("(5 + 5) * 2", "((5 + 5) * 2)"),
-            // ("2 / (5 + 5)", "(2 / (5 + 5))"),
-            // ("-(5 + 5)", "(-(5 + 5))"),
-            // ("!(true == true)", "(!(true == true))"),
+            ("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"),
+            ("(5 + 5) * 2", "((5 + 5) * 2)"),
+            ("2 / (5 + 5)", "(2 / (5 + 5))"),
+            ("-(5 + 5)", "(-(5 + 5))"),
+            ("!(true == true)", "(!(true == true))"),
         ];
 
         for (input, expected) in tests.iter() {
