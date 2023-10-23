@@ -35,25 +35,27 @@ impl Parser {
     pub fn new(mut lexer: Lexer) -> Parser {
         let curr_token = lexer.next_token();
         let peek_token = lexer.next_token();
-        let mut prefix_parse_fns = HashMap::<TokenType, fn(&mut Parser) -> Expression>::new();
-        prefix_parse_fns.insert(TokenType::IDENT, parse_fns::parse_identifier);
-        prefix_parse_fns.insert(TokenType::INT, parse_fns::parse_integer);
-        prefix_parse_fns.insert(TokenType::BANG, parse_fns::parse_prefix_expression);
-        prefix_parse_fns.insert(TokenType::MINUS, parse_fns::parse_prefix_expression);
-        prefix_parse_fns.insert(TokenType::TRUE, parse_fns::parse_boolean_expression);
-        prefix_parse_fns.insert(TokenType::FALSE, parse_fns::parse_boolean_expression);
-        prefix_parse_fns.insert(TokenType::LPAREN, parse_fns::parse_grouped_expression);
-        prefix_parse_fns.insert(TokenType::IF, parse_fns::parse_if_expression);
-        let mut infix_parse_fns =
-            HashMap::<TokenType, fn(&mut Parser, Expression) -> Expression>::new();
-        infix_parse_fns.insert(TokenType::PLUS, parse_fns::parse_infix_expression);
-        infix_parse_fns.insert(TokenType::MINUS, parse_fns::parse_infix_expression);
-        infix_parse_fns.insert(TokenType::SLASH, parse_fns::parse_infix_expression);
-        infix_parse_fns.insert(TokenType::ASTERISK, parse_fns::parse_infix_expression);
-        infix_parse_fns.insert(TokenType::EQUAL, parse_fns::parse_infix_expression);
-        infix_parse_fns.insert(TokenType::NOTEQUAL, parse_fns::parse_infix_expression);
-        infix_parse_fns.insert(TokenType::LT, parse_fns::parse_infix_expression);
-        infix_parse_fns.insert(TokenType::GT, parse_fns::parse_infix_expression);
+        let prefix_parse_fns = HashMap::from([
+            (TokenType::IDENT, parse_fns::parse_identifier as fn(&mut Parser) -> Expression),
+            (TokenType::INT, parse_fns::parse_integer),
+            (TokenType::BANG, parse_fns::parse_prefix_expression),
+            (TokenType::MINUS, parse_fns::parse_prefix_expression),
+            (TokenType::TRUE, parse_fns::parse_boolean_expression),
+            (TokenType::FALSE, parse_fns::parse_boolean_expression),
+            (TokenType::LPAREN, parse_fns::parse_grouped_expression),
+            (TokenType::IF, parse_fns::parse_if_expression)
+        ]);
+        let infix_parse_fns = HashMap::from([
+            (TokenType::PLUS, parse_fns::parse_infix_expression as fn(&mut Parser, Expression) -> Expression),
+            (TokenType::MINUS, parse_fns::parse_infix_expression),
+            (TokenType::SLASH, parse_fns::parse_infix_expression),
+            (TokenType::ASTERISK, parse_fns::parse_infix_expression),
+            (TokenType::EQUAL, parse_fns::parse_infix_expression),
+            (TokenType::NOTEQUAL, parse_fns::parse_infix_expression),
+            (TokenType::LT, parse_fns::parse_infix_expression),
+            (TokenType::GT, parse_fns::parse_infix_expression)
+        ]);
+
         let precedences = HashMap::from([
             (TokenType::EQUAL, Precedence::Equals),
             (TokenType::NOTEQUAL, Precedence::Equals),
@@ -281,23 +283,21 @@ mod parse_fns {
             return Expression::None;
         }
         let consequence = Box::new(p.parse_block_statement());
-        
+
         let mut alternative = Box::new(Statement::None);
         if p.is_peek_token_expected(TokenType::ELSE) {
             p.next_token();
-            if !p.peek_then_next(TokenType::LBRACE){
+            if !p.peek_then_next(TokenType::LBRACE) {
                 return Expression::None;
             }
             alternative = Box::new(p.parse_block_statement());
-
         }
         Expression::If(If {
             token,
             condition,
             consequence,
-            alternative
+            alternative,
         })
-
     }
 
     pub fn parse_grouped_expression(p: &mut Parser) -> Expression {
