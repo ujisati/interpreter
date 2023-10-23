@@ -23,7 +23,7 @@ pub enum Expression {
     Prefix(Prefix),
     Infix(Infix),
     Boolean(Boolean),
-    If(If)
+    If(If),
 }
 
 #[derive(Node, Debug)]
@@ -64,15 +64,16 @@ pub struct If {
     pub token: Token,
     pub condition: Box<Expression>,
     pub consequence: Box<Statement>,
-    pub alternative: Box<Statement>
+    pub alternative: Box<Statement>,
 }
 
 #[derive(Debug)]
 pub enum Statement {
+    None,
     Let(Let),
     Return(Return),
     ExpressionStmt(ExpressionStmt),
-    Block(Block)
+    Block(Block),
 }
 
 #[derive(Node, Debug)]
@@ -97,7 +98,7 @@ pub struct ExpressionStmt {
 #[derive(Node, Debug)]
 pub struct Block {
     pub token: Token,
-    pub statements: Vec<Statement>
+    pub statements: Vec<Statement>,
 }
 
 impl DebugString for Program {
@@ -116,7 +117,8 @@ impl DebugString for Statement {
             Self::Let(s) => s.repr(),
             Self::Return(s) => s.repr(),
             Self::ExpressionStmt(s) => s.repr(),
-            Self::Block(s) => s.repr()
+            Self::Block(s) => s.repr(),
+            Self::None => "".into()
         }
     }
 }
@@ -197,7 +199,7 @@ impl DebugString for Boolean {
 
 impl DebugString for Block {
     fn repr(&self) -> String {
-        let mut output = String::new(); 
+        let mut output = String::new();
         for s in &self.statements {
             output.push_str(s.repr().as_str());
         }
@@ -219,12 +221,11 @@ impl DebugString for If {
                     output.push_str(&self.alternative.repr());
                 }
             }
-            _ => panic!("Expected block")
+            _ => panic!("Expected block"),
         }
         output
     }
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -1,8 +1,8 @@
 use anyhow::Result;
 
 use crate::ast::{
-    DebugString, Expression, ExpressionStmt, Identifier, Integer, Let, Node, Program, Return,
-    Statement,
+    Block, DebugString, Expression, ExpressionStmt, Identifier, Integer, Let, Node, Program,
+    Return, Statement,
 };
 use crate::lexer::{Lexer, Token, TokenType};
 use log::info;
@@ -43,6 +43,7 @@ impl Parser {
         prefix_parse_fns.insert(TokenType::TRUE, parse_fns::parse_boolean_expression);
         prefix_parse_fns.insert(TokenType::FALSE, parse_fns::parse_boolean_expression);
         prefix_parse_fns.insert(TokenType::LPAREN, parse_fns::parse_grouped_expression);
+        prefix_parse_fns.insert(TokenType::IF, parse_fns::parse_if_expression);
         let mut infix_parse_fns =
             HashMap::<TokenType, fn(&mut Parser, Expression) -> Expression>::new();
         infix_parse_fns.insert(TokenType::PLUS, parse_fns::parse_infix_expression);
@@ -103,10 +104,6 @@ impl Parser {
     }
 
     fn parse_let_statement(&mut self) -> Option<Statement> {
-        // let stmt = Statement::Let(Let {
-        //     token: self.curr_token,
-        //     name
-        // });
         let token = self.curr_token.clone();
 
         if !self.peek_then_next(TokenType::IDENT) {
@@ -191,6 +188,25 @@ impl Parser {
         }))
     }
 
+    fn parse_block_statement(&mut self) -> Statement {
+        let mut block = Block {
+            token: self.curr_token.clone(),
+            statements: Vec::new(),
+        };
+        self.next_token();
+        while !self.is_curr_token_expected(TokenType::RBRACE)
+            && !self.is_curr_token_expected(TokenType::EOF)
+        {
+            let stmt = self.parse_statement();
+            match stmt {
+                Some(s) => block.statements.push(s),
+                None => (),
+            }
+            self.next_token();
+        }
+        Statement::Block(block)
+    }
+
     fn parse_expression(&mut self, precedence: Precedence) -> Expression {
         info!(
             "parsing expression: {} {}",
@@ -246,9 +262,43 @@ impl Parser {
 }
 
 mod parse_fns {
-    use crate::ast::{Boolean, Infix, Prefix};
+    use crate::ast::{Boolean, If, Infix, Prefix};
 
     use super::*;
+
+    pub fn parse_if_expression(p: &mut Parser) -> Expression {
+        let token = p.curr_token.clone();
+        if !p.peek_then_next(TokenType::LPAREN) {
+            return Expression::None;
+        }
+        p.next_token();
+        let condition = Box::new(p.parse_expression(Precedence::Lowest));
+        if !p.peek_then_next(TokenType::RPAREN) {
+            return Expression::None;
+        }
+
+        if !p.peek_then_next(TokenType::LBRACE) {
+            return Expression::None;
+        }
+        let consequence = Box::new(p.parse_block_statement());
+        
+        let mut alternative = Box::new(Statement::None);
+        if p.is_peek_token_expected(TokenType::ELSE) {
+            p.next_token();
+            if !p.peek_then_next(TokenType::LBRACE){
+                return Expression::None;
+            }
+            alternative = Box::new(p.parse_block_statement());
+
+        }
+        Expression::If(If {
+            token,
+            condition,
+            consequence,
+            alternative
+        })
+
+    }
 
     pub fn parse_grouped_expression(p: &mut Parser) -> Expression {
         p.next_token();
@@ -607,7 +657,12 @@ mod tests {
         }
     }
 
-    fn check_infix_expression(expression: &Expression, left: Type, op: String, right: Type) -> bool {
+    fn check_infix_expression(
+        expression: &Expression,
+        left: Type,
+        op: String,
+        right: Type,
+    ) -> bool {
         let exp = match expression {
             Expression::Infix(i) => i,
             _ => panic!("Expected infix"),
@@ -627,7 +682,7 @@ mod tests {
         assert!(exp.token_literal() == value.to_string());
         return true;
     }
-    
+
     #[test]
     fn test_if_expression() {
         let input = "if (x < y) { x }";
@@ -644,22 +699,72 @@ mod tests {
             Expression::If(i) => i,
             _ => panic!("Expected if expression"),
         };
-        check_infix_expression(if_stmt.condition.as_ref(), Type::Str("x".into()), "<".into(), Type::Str("y".into()));
+        check_infix_expression(
+            if_stmt.condition.as_ref(),
+            Type::Str("x".into()),
+            "<".into(),
+            Type::Str("y".into()),
+        );
         let statements = match if_stmt.consequence.as_ref() {
             Statement::Block(b) => &b.statements,
-            _ => panic!("Expected block")
+            _ => panic!("Expected block, got: {:?}", if_stmt.consequence.as_ref()),
         };
         assert!(statements.len() == 1);
 
         let consequence = match &statements[0] {
             Statement::ExpressionStmt(s) => s,
-            _ => panic!("Expected expression stmt")
+            _ => panic!("Expected expression stmt"),
+        };
+        check_identifier(&consequence.expression, "x".into());
+        match if_stmt.alternative.as_ref() {
+            Statement::None => (),
+            _ => panic!("Expected block, got: {:?}", if_stmt.alternative.as_ref()),
+        };
+    }
+
+    #[test]
+    fn test_if_else_expression() {
+        let input = "if (x < y) { x } else { y }";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse().unwrap();
+        check_errors(parser);
+        assert!(program.statements.len() == 1);
+        let exp_stmt = match &program.statements[0] {
+            Statement::ExpressionStmt(s) => s,
+            _ => panic!("Expected expression statement"),
+        };
+        let if_stmt = match &exp_stmt.expression {
+            Expression::If(i) => i,
+            _ => panic!("Expected if expression"),
+        };
+        check_infix_expression(
+            if_stmt.condition.as_ref(),
+            Type::Str("x".into()),
+            "<".into(),
+            Type::Str("y".into()),
+        );
+        let statements = match if_stmt.consequence.as_ref() {
+            Statement::Block(b) => &b.statements,
+            _ => panic!("Expected block, got: {:?}", if_stmt.consequence.as_ref()),
+        };
+        assert!(statements.len() == 1);
+
+        let consequence = match &statements[0] {
+            Statement::ExpressionStmt(s) => s,
+            _ => panic!("Expected expression stmt"),
         };
         check_identifier(&consequence.expression, "x".into());
         let alt_statements = match if_stmt.alternative.as_ref() {
             Statement::Block(b) => &b.statements,
-            _ => panic!("Expected block")
+            _ => panic!("Expected block, got: {:?}", if_stmt.alternative.as_ref()),
         };
-        assert!(alt_statements.len() == 0);
+        assert!(alt_statements.len() == 1);
+
+        let alternative = match &alt_statements[0] {
+            Statement::ExpressionStmt(s) => s,
+            _ => panic!("Expected expression stmt"),
+        };
+        check_identifier(&alternative.expression, "y".into());
     }
 }
