@@ -24,9 +24,10 @@ pub enum Expression {
     Infix(Infix),
     Boolean(Boolean),
     If(If),
+    FnLit(FnLit)
 }
 
-#[derive(Node, Debug)]
+#[derive(Node, Debug, Clone)]
 pub struct Identifier {
     pub token: Token,
     pub value: String,
@@ -63,8 +64,15 @@ pub struct Boolean {
 pub struct If {
     pub token: Token,
     pub condition: Box<Expression>,
-    pub consequence: Box<Statement>,
-    pub alternative: Box<Statement>,
+    pub consequence: Box<Block>,
+    pub alternative: Option<Box<Block>>,
+}
+
+#[derive(Node, Debug)]
+pub struct FnLit {
+    pub token: Token,
+    pub parameters: Vec<Identifier>,
+    pub body: Block
 }
 
 #[derive(Debug)]
@@ -214,15 +222,29 @@ impl DebugString for If {
         output.push_str(&self.condition.repr());
         output.push(' ');
         output.push_str(&self.consequence.repr());
-        match self.alternative.as_ref() {
-            Statement::Block(b) => {
-                if b.statements.len() > 0 {
-                    output.push_str("else");
-                    output.push_str(&self.alternative.repr());
-                }
+        if let Some(alt) = &self.alternative {
+            if alt.statements.len() > 0 {
+                output.push_str("else");
+                output.push_str(&alt.repr());
             }
-            _ => panic!("Expected block"),
         }
+        output
+    }
+}
+
+impl DebugString for FnLit {
+    fn repr(&self) -> String {
+        let mut output = String::new();
+        let mut params = Vec::new();
+        for param in &self.parameters {
+            params.push(param.repr())
+        }
+        output.push_str(&self.token_literal());
+        output.push('(');
+        output.push_str(&params.join(", "));
+        self.body.repr();
+        output.push(')');
+        output.push_str(&self.body.repr());
         output
     }
 }
@@ -230,7 +252,6 @@ impl DebugString for If {
 #[cfg(test)]
 mod tests {
     use crate::lexer::TokenType;
-
     use super::*;
 
     #[test]
