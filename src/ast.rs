@@ -25,6 +25,7 @@ pub enum Expression {
     Boolean(Boolean),
     If(If),
     FnLit(FnLit),
+    Call(Call)
 }
 
 #[derive(Node, Debug, Clone)]
@@ -73,6 +74,13 @@ pub struct FnLit {
     pub token: Token,
     pub parameters: Vec<Identifier>,
     pub body: Block,
+}
+
+#[derive(Node, Debug)]
+pub struct Call {
+    pub token: Token,
+    pub function: Box<Expression>,
+    pub arguments: Vec<Expression>
 }
 
 #[derive(Debug)]
@@ -245,6 +253,21 @@ impl DebugString for FnLit {
         self.body.repr();
         output.push(')');
         output.push_str(&self.body.repr());
+        output
+    }
+}
+
+impl DebugString for Call {
+    fn repr(&self) -> String {
+        let mut output = String::new();
+        let mut args = Vec::new();
+        for arg in &self.arguments {
+            args.push(arg.repr());
+        }
+        output.push_str(&self.function.repr());
+        output.push('(');
+        output.push_str(&args.join(", "));
+        output.push(')');
         output
     }
 }

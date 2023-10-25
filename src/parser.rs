@@ -820,6 +820,7 @@ mod tests {
 
     #[test]
     fn test_function_literal_parsing() {
+        // TODO: might want to add more tests for this
         let input = "fn(x, y) { x + y }";
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
@@ -856,5 +857,31 @@ mod tests {
             "+".into(),
             Type::Str("y".into()),
         );
+    }
+
+    #[test]
+    fn test_call_expression_parsing() {
+        let input = "add(1, 2 * 3, 4 + 5);";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse().unwrap();
+        check_errors(parser);
+        assert!(program.statements.len() == 1);
+        
+        let exp_stmt = match &program.statements[0] {
+            Statement::ExpressionStmt(s) => s,
+            _ => panic!("Expected expression statement"),
+        };
+        let call_exp = match &exp_stmt.expression {
+            Expression::Call(c) => c,
+            _ => panic!("Expected call expression"),
+        };
+
+        check_identifier(&exp_stmt.expression , "add".into());
+
+        assert!(call_exp.arguments.len() == 3);
+        check_literal_expression(&call_exp.arguments[0], Type::Int(1));
+        check_infix_expression(&call_exp.arguments[1], Type::Int(2), "*".into(), Type::Int(3));
+        check_infix_expression(&call_exp.arguments[2], Type::Int(4), "*".into(), Type::Int(5));
     }
 }
