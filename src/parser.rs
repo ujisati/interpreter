@@ -250,7 +250,32 @@ impl Parser {
     }
 
     fn parse_function_parameters(&mut self) -> Vec<Identifier> {
-        todo!()
+        let mut identifiers = Vec::new();
+        if self.is_peek_token_expected(TokenType::RPAREN) {
+            self.next_token();
+            return identifiers;
+        }
+        self.next_token();
+        let identifier = Identifier {
+            token: self.curr_token.clone(),
+            value: self.curr_token.literal.clone(),
+        };
+        identifiers.push(identifier);
+        while self.is_peek_token_expected(TokenType::COMMA) {
+            self.next_token();
+            self.next_token();
+            let identifier = Identifier {
+                token: self.curr_token.clone(),
+                value: self.curr_token.literal.clone(),
+            };
+            identifiers.push(identifier);
+        }
+        if !self.peek_then_next(TokenType::RPAREN) {
+            // TODO: there should be better error handling here
+            panic!("Expected RPAREN")
+        }
+
+        identifiers
     }
 
     fn peek_precedence(&self) -> Precedence {
@@ -817,7 +842,7 @@ mod tests {
             "x".into(),
         );
         check_identifier(
-            &Expression::Identifier(fn_lit.parameters[0].clone()),
+            &Expression::Identifier(fn_lit.parameters[1].clone()),
             "y".into(),
         );
         assert!(fn_lit.body.statements.len() == 1);
