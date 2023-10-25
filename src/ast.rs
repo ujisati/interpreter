@@ -24,7 +24,7 @@ pub enum Expression {
     Infix(Infix),
     Boolean(Boolean),
     If(If),
-    FnLit(FnLit)
+    FnLit(FnLit),
 }
 
 #[derive(Node, Debug, Clone)]
@@ -72,7 +72,7 @@ pub struct If {
 pub struct FnLit {
     pub token: Token,
     pub parameters: Vec<Identifier>,
-    pub body: Block
+    pub body: Block,
 }
 
 #[derive(Debug)]
@@ -126,7 +126,7 @@ impl DebugString for Statement {
             Self::Return(s) => s.repr(),
             Self::ExpressionStmt(s) => s.repr(),
             Self::Block(s) => s.repr(),
-            Self::None => "".into()
+            Self::None => "".into(),
         }
     }
 }
@@ -251,8 +251,8 @@ impl DebugString for FnLit {
 
 #[cfg(test)]
 mod tests {
-    use crate::lexer::TokenType;
     use super::*;
+    use crate::lexer::TokenType;
 
     #[test]
     fn test_debug_string() {

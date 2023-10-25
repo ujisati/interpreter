@@ -36,7 +36,10 @@ impl Parser {
         let curr_token = lexer.next_token();
         let peek_token = lexer.next_token();
         let prefix_parse_fns = HashMap::from([
-            (TokenType::IDENT, parse_fns::parse_identifier as fn(&mut Parser) -> Expression),
+            (
+                TokenType::IDENT,
+                parse_fns::parse_identifier as fn(&mut Parser) -> Expression,
+            ),
             (TokenType::INT, parse_fns::parse_integer),
             (TokenType::BANG, parse_fns::parse_prefix_expression),
             (TokenType::MINUS, parse_fns::parse_prefix_expression),
@@ -44,17 +47,20 @@ impl Parser {
             (TokenType::FALSE, parse_fns::parse_boolean_expression),
             (TokenType::LPAREN, parse_fns::parse_grouped_expression),
             (TokenType::IF, parse_fns::parse_if_expression),
-            (TokenType::FUNCTION, parse_fns::parse_function_literal)
+            (TokenType::FUNCTION, parse_fns::parse_function_literal),
         ]);
         let infix_parse_fns = HashMap::from([
-            (TokenType::PLUS, parse_fns::parse_infix_expression as fn(&mut Parser, Expression) -> Expression),
+            (
+                TokenType::PLUS,
+                parse_fns::parse_infix_expression as fn(&mut Parser, Expression) -> Expression,
+            ),
             (TokenType::MINUS, parse_fns::parse_infix_expression),
             (TokenType::SLASH, parse_fns::parse_infix_expression),
             (TokenType::ASTERISK, parse_fns::parse_infix_expression),
             (TokenType::EQUAL, parse_fns::parse_infix_expression),
             (TokenType::NOTEQUAL, parse_fns::parse_infix_expression),
             (TokenType::LT, parse_fns::parse_infix_expression),
-            (TokenType::GT, parse_fns::parse_infix_expression)
+            (TokenType::GT, parse_fns::parse_infix_expression),
         ]);
 
         let precedences = HashMap::from([
@@ -269,7 +275,7 @@ impl Parser {
 }
 
 mod parse_fns {
-    use crate::ast::{Boolean, If, Infix, Prefix, FnLit};
+    use crate::ast::{Boolean, FnLit, If, Infix, Prefix};
 
     use super::*;
 
@@ -287,10 +293,10 @@ mod parse_fns {
 
         let body = p.parse_block_statement();
 
-        Expression::FnLit(FnLit{
+        Expression::FnLit(FnLit {
             token,
             parameters,
-            body
+            body,
         })
     }
 
@@ -740,10 +746,10 @@ mod tests {
         };
         check_identifier(&consequence.expression, "x".into());
         if let Some(alt) = &if_stmt.alternative {
-        match alt.as_ref().statements[0] {
-            Statement::None => (),
-            _ => panic!("Expected block, got: {:?}", if_stmt.alternative.as_ref()),
-        };
+            match alt.as_ref().statements[0] {
+                Statement::None => (),
+                _ => panic!("Expected block, got: {:?}", if_stmt.alternative.as_ref()),
+            };
         };
     }
 
@@ -806,14 +812,24 @@ mod tests {
         };
 
         assert!(fn_lit.parameters.len() == 2);
-        check_identifier(&Expression::Identifier(fn_lit.parameters[0].clone()), "x".into());
-        check_identifier(&Expression::Identifier(fn_lit.parameters[0].clone()), "y".into());
+        check_identifier(
+            &Expression::Identifier(fn_lit.parameters[0].clone()),
+            "x".into(),
+        );
+        check_identifier(
+            &Expression::Identifier(fn_lit.parameters[0].clone()),
+            "y".into(),
+        );
         assert!(fn_lit.body.statements.len() == 1);
         let body_stmt = match &fn_lit.body.statements[0] {
             Statement::ExpressionStmt(s) => s,
-            _ => panic!("Expected expression stmt")
+            _ => panic!("Expected expression stmt"),
         };
-        check_infix_expression(&body_stmt.expression, Type::Str("x".into()), "+".into(), Type::Str("y".into()));
-
+        check_infix_expression(
+            &body_stmt.expression,
+            Type::Str("x".into()),
+            "+".into(),
+            Type::Str("y".into()),
+        );
     }
 }
