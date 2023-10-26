@@ -25,7 +25,7 @@ pub enum Expression {
     Boolean(Boolean),
     If(If),
     FnLit(FnLit),
-    Call(Call)
+    Call(Call),
 }
 
 #[derive(Node, Debug, Clone)]
@@ -76,11 +76,17 @@ pub struct FnLit {
     pub body: Block,
 }
 
+#[derive(Debug)]
+pub enum FunctionName {
+    Identifier(Identifier),
+    FnLit(FnLit),
+}
+
 #[derive(Node, Debug)]
 pub struct Call {
     pub token: Token,
-    pub function: Box<Expression>,
-    pub arguments: Vec<Expression>
+    pub function: Box<Expression>, // Identifier or FnLit
+    pub arguments: Vec<Expression>,
 }
 
 #[derive(Debug)]
@@ -172,6 +178,7 @@ impl DebugString for Expression {
             Self::Infix(i) => i.repr(),
             Self::Integer(i) => i.repr(),
             Self::Boolean(b) => b.repr(),
+            Self::Call(c) => c.repr(),
             _ => panic!("Expression not found: {:?}", self),
         }
     }

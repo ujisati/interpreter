@@ -61,6 +61,7 @@ impl Parser {
             (TokenType::NOTEQUAL, parse_fns::parse_infix_expression),
             (TokenType::LT, parse_fns::parse_infix_expression),
             (TokenType::GT, parse_fns::parse_infix_expression),
+            (TokenType::LPAREN, parse_fns::parse_call_expression),
         ]);
 
         let precedences = HashMap::from([
@@ -72,6 +73,7 @@ impl Parser {
             (TokenType::MINUS, Precedence::Sum),
             (TokenType::SLASH, Precedence::Product),
             (TokenType::ASTERISK, Precedence::Product),
+            (TokenType::LPAREN, Precedence::Call),
         ]);
         Self {
             lexer,
@@ -278,6 +280,32 @@ impl Parser {
         identifiers
     }
 
+    pub fn parse_call_args(&mut self) -> Vec<Expression> {
+        let mut args = Vec::new();
+
+        if self.is_peek_token_expected(TokenType::RPAREN) {
+            self.next_token();
+            return args;
+        }
+
+        self.next_token();
+
+        let exp = self.parse_expression(Precedence::Lowest);
+        args.push(exp);
+        while self.is_peek_token_expected(TokenType::COMMA) {
+            self.next_token();
+            self.next_token();
+            args.push(self.parse_expression(Precedence::Lowest));
+        }
+
+        if !self.peek_then_next(TokenType::RPAREN) {
+            // TODO: add better error handling
+            panic!("Expected RPAREN")
+        }
+
+        args
+    }
+
     fn peek_precedence(&self) -> Precedence {
         match self.precedences.get(&self.peek_token.token_type) {
             Some(p) => {
@@ -300,7 +328,7 @@ impl Parser {
 }
 
 mod parse_fns {
-    use crate::ast::{Boolean, FnLit, If, Infix, Prefix};
+    use crate::ast::{Boolean, Call, FnLit, If, Infix, Prefix};
 
     use super::*;
 
@@ -428,6 +456,16 @@ mod parse_fns {
             right: Box::new(right),
             operator: token.literal.clone(),
             token,
+        })
+    }
+
+    pub fn parse_call_expression(p: &mut Parser, function: Expression) -> Expression {
+        let token = p.curr_token.clone();
+        let arguments = p.parse_call_args();
+        Expression::Call(Call {
+            token,
+            arguments,
+            function: Box::new(function),
         })
     }
 }
@@ -683,6 +721,15 @@ mod tests {
             ("2 / (5 + 5)", "(2 / (5 + 5))"),
             ("-(5 + 5)", "(-(5 + 5))"),
             ("!(true == true)", "(!(true == true))"),
+            ("a + add(b * c) + d", "((a + add((b * c))) + d)"),
+            (
+                "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+                "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
+            ),
+            (
+                "add(a + b + c * d / f + g)",
+                "add((((a + b) + ((c * d) / f)) + g))",
+            ),
         ];
 
         for (input, expected) in tests.iter() {
@@ -867,7 +914,7 @@ mod tests {
         let program = parser.parse().unwrap();
         check_errors(parser);
         assert!(program.statements.len() == 1);
-        
+
         let exp_stmt = match &program.statements[0] {
             Statement::ExpressionStmt(s) => s,
             _ => panic!("Expected expression statement"),
@@ -877,11 +924,21 @@ mod tests {
             _ => panic!("Expected call expression"),
         };
 
-        check_identifier(&exp_stmt.expression , "add".into());
+        check_identifier(&call_exp.function.as_ref(), "add".into());
 
         assert!(call_exp.arguments.len() == 3);
         check_literal_expression(&call_exp.arguments[0], Type::Int(1));
-        check_infix_expression(&call_exp.arguments[1], Type::Int(2), "*".into(), Type::Int(3));
-        check_infix_expression(&call_exp.arguments[2], Type::Int(4), "*".into(), Type::Int(5));
+        check_infix_expression(
+            &call_exp.arguments[1],
+            Type::Int(2),
+            "*".into(),
+            Type::Int(3),
+        );
+        check_infix_expression(
+            &call_exp.arguments[2],
+            Type::Int(4),
+            "+".into(),
+            Type::Int(5),
+        );
     }
 }
