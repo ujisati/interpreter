@@ -82,8 +82,8 @@ impl Token {
     }
 }
 
-pub struct Lexer {
-    input: &'static str,
+pub struct Lexer<'a> {
+    input: &'a str,
     position: usize,      // Current
     read_position: usize, // Current + 1
     ch: char,
@@ -91,8 +91,8 @@ pub struct Lexer {
     keywords: HashMap<String, TokenType>,
 }
 
-impl Lexer {
-    pub fn new(input: &'static str) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(input: &'a str) -> Self {
         let keywords = HashMap::from([
             ("fn".to_string(), TokenType::FUNCTION),
             ("let".to_string(), TokenType::LET),

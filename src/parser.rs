@@ -21,18 +21,18 @@ enum Precedence {
     Call = 7,
 }
 
-pub struct Parser {
-    lexer: Lexer,
+pub struct Parser<'a> {
+    lexer: Lexer<'a>,
     pub curr_token: Token,
     peek_token: Token,
     prefix_parse_fns: HashMap<TokenType, fn(&mut Parser) -> Expression>,
     infix_parse_fns: HashMap<TokenType, fn(&mut Parser, Expression) -> Expression>,
     precedences: HashMap<TokenType, Precedence>,
-    errors: Vec<String>,
+    pub errors: Vec<String>,
 }
 
-impl Parser {
-    pub fn new(mut lexer: Lexer) -> Parser {
+impl<'a> Parser<'a> {
+    pub fn new(mut lexer: Lexer<'a>) -> Parser {
         let curr_token = lexer.next_token();
         let peek_token = lexer.next_token();
         let prefix_parse_fns = HashMap::from([
@@ -139,11 +139,7 @@ impl Parser {
             panic!("Expected semicolon");
         }
 
-        Some(Statement::Let(Let {
-            token,
-            value,
-            name,
-        }))
+        Some(Statement::Let(Let { token, value, name }))
     }
 
     fn is_curr_token_expected(&self, token_type: TokenType) -> bool {
@@ -187,7 +183,7 @@ impl Parser {
 
         return Some(Statement::Return(Return {
             token,
-            return_value 
+            return_value,
         }));
     }
 
@@ -340,7 +336,7 @@ mod parse_fns {
 
     use super::*;
 
-        pub fn parse_function_literal(p: &mut Parser) -> Expression {
+    pub fn parse_function_literal(p: &mut Parser) -> Expression {
         let token = p.curr_token.clone();
         if !p.peek_then_next(TokenType::LPAREN) {
             return Expression::None;
