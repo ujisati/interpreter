@@ -179,6 +179,7 @@ impl DebugString for Expression {
             Self::Integer(i) => i.repr(),
             Self::Boolean(b) => b.repr(),
             Self::Call(c) => c.repr(),
+            Self::FnLit(f) => f.repr(),
             _ => panic!("Expression not found: {:?}", self),
         }
     }
@@ -198,7 +199,7 @@ impl DebugString for Let {
 
 impl DebugString for Return {
     fn repr(&self) -> String {
-        self.token_literal() + &self.return_value.repr()
+        self.token_literal() + " " + &self.return_value.repr()
     }
 }
 
