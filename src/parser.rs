@@ -121,7 +121,7 @@ impl Parser {
             return None;
         }
 
-        let identifier = Identifier {
+        let name = Identifier {
             token: self.curr_token.clone(),
             value: self.curr_token.literal.clone(),
         };
@@ -130,15 +130,19 @@ impl Parser {
             return None;
         }
 
-        // TODO: don't skip expressions
-        while !self.is_curr_token_expected(TokenType::SEMICOLON) {
-            self.next_token();
+        self.next_token();
+
+        let value = self.parse_expression(Precedence::Lowest);
+
+        if !self.peek_then_next(TokenType::SEMICOLON) {
+            //TODO: add better error handling
+            panic!("Expected semicolon");
         }
 
         Some(Statement::Let(Let {
             token,
-            name: identifier,
-            value: Expression::None,
+            value,
+            name,
         }))
     }
 
@@ -174,12 +178,16 @@ impl Parser {
         let token = self.curr_token.clone();
         self.next_token();
 
-        while !self.is_curr_token_expected(TokenType::SEMICOLON) {
-            self.next_token();
+        let return_value = self.parse_expression(Precedence::Lowest);
+
+        if !self.peek_then_next(TokenType::SEMICOLON) {
+            //TODO: add better error handling
+            panic!("Expected semicolon");
         }
+
         return Some(Statement::Return(Return {
             token,
-            return_value: Expression::None, // TODO: make expression
+            return_value 
         }));
     }
 
@@ -332,7 +340,7 @@ mod parse_fns {
 
     use super::*;
 
-    pub fn parse_function_literal(p: &mut Parser) -> Expression {
+        pub fn parse_function_literal(p: &mut Parser) -> Expression {
         let token = p.curr_token.clone();
         if !p.peek_then_next(TokenType::LPAREN) {
             return Expression::None;
@@ -486,20 +494,26 @@ mod tests {
 
     #[test]
     fn test_let_statements() {
-        let input = "
-            let x = 5;
-            let y = 10;
-            let foobar = 838383;
-        ";
-        let lexer = Lexer::new(input.into());
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse().unwrap();
-        check_errors(parser);
-        assert!(program.statements.len() == 3);
-        let expected_identifier = ["x", "y", "foobar"];
-        for (i, e) in expected_identifier.iter().enumerate() {
-            let stmt = &program.statements[i];
-            check_let_statement(stmt, e)
+        let tests = [
+            ("let x = 5;", "x", Type::Int(5)),
+            ("let y = true;", "y", Type::Bool(true)),
+            ("let foobar = y;", "foobar", Type::Str("y".into())),
+        ];
+
+        for (input, expected_ident, expected_val) in tests {
+            let lexer = Lexer::new(input.into());
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse().unwrap();
+            check_errors(parser);
+            assert!(program.statements.len() == 1);
+
+            let stmt = &program.statements[0];
+            check_let_statement(stmt, expected_ident);
+            let val = match stmt {
+                Statement::Let(stmt) => &stmt.value,
+                _ => panic!("Expected Let statement"),
+            };
+            check_literal_expression(val, expected_val);
         }
     }
 
@@ -533,22 +547,25 @@ mod tests {
 
     #[test]
     fn test_return_statement() {
-        let input = "
-            return 5;
-            return 10;
-            return 993322;
-        ";
-        let lexer = Lexer::new(input.into());
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse().unwrap();
+        let tests = [
+            ("return 5;", Type::Int(5)),
+            ("return true;", Type::Bool(true)),
+            ("return y;", Type::Str("y".into())),
+        ];
 
-        assert!(program.statements.len() == 3);
-        for stmt in program.statements {
-            let stmt = match stmt {
-                Statement::Return(s) => s,
-                _ => panic!("This shouldn't happen"),
+        for (input, expected_val) in tests {
+            let lexer = Lexer::new(input.into());
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse().unwrap();
+            check_errors(parser);
+            assert!(program.statements.len() == 1);
+
+            let stmt = &program.statements[0];
+            let val = match stmt {
+                Statement::Return(stmt) => &stmt.return_value,
+                _ => panic!("Expected return statement"),
             };
-            assert_eq!(stmt.token_literal(), "return")
+            check_literal_expression(val, expected_val);
         }
     }
 
