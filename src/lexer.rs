@@ -7,6 +7,7 @@ use std::{collections::HashMap, fmt::Display};
 /// translation from Thorsten Ball's Go code for me at the time.
 #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
 pub enum TokenType {
+    None,
     ILLEGAL,
     EOF,
 

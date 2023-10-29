@@ -94,6 +94,8 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Result<Program> {
         let mut program = Program {
             statements: Vec::new(),
+            literal: "".into(),
+            token: Token { token_type: TokenType::None, literal: "".into() }
         };
         while self.curr_token.token_type != TokenType::EOF {
             info!("parsing {}", self.curr_token.literal);

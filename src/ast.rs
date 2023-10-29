@@ -10,9 +10,11 @@ pub trait DebugString {
     fn repr(&self) -> String;
 }
 
-#[derive(Debug)]
+#[derive(Node, Debug)]
 pub struct Program {
     pub statements: Vec<Statement>,
+    pub token: Token,
+    pub literal: String
 }
 
 #[derive(Debug)]
@@ -299,6 +301,8 @@ mod tests {
                     value: String::from("another_var"),
                 }),
             })],
+            literal: "".into(),
+            token: Token { token_type: TokenType::None, literal: "".into() }
         };
         println!("{}", &program.repr());
         assert!(&program.repr() == "let my_var = another_var;");
