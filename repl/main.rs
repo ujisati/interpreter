@@ -1,5 +1,6 @@
 extern crate lang;
-use lang::{ast::DebugString, lexer::TokenType, parser::Parser};
+use lang::evaluator::Eval;
+use lang::{ast::DebugString,  parser::Parser};
 use std::io;
 use std::io::Write;
 
@@ -26,6 +27,7 @@ fn main() -> io::Result<()> {
             println!("{:?}", parser.errors);
             continue;
         }
-        println!("{}", program.repr());
+        let evaluated = program.eval();
+        println!("{:?}", evaluated);
     }
 }

@@ -3,15 +3,18 @@ pub trait Object {
     // fn object_type(&self) -> ObjectType;
 }
 
+#[derive(Debug)]
 pub enum ObjectType {
     Integer(Integer),
     Boolean(Boolean),
 }
 
+#[derive(Debug)]
 pub struct Integer {
     pub value: i64,
 }
 
+#[derive(Debug)]
 pub struct Boolean {
     value: bool,
 }
