@@ -5,15 +5,15 @@ pub trait Object {
 
 pub enum ObjectType {
     Integer(Integer),
-    Boolean(Boolean)
+    Boolean(Boolean),
 }
 
 pub struct Integer {
-    value: i64
-} 
+    pub value: i64,
+}
 
 pub struct Boolean {
-    value: bool
+    value: bool,
 }
 
 impl Object for Integer {
