@@ -19,8 +19,6 @@ pub struct Boolean {
     pub value: bool,
 }
 
-
-
 impl Object for Integer {
     fn inspect(&self) -> String {
         self.value.to_string()
