@@ -16,8 +16,10 @@ pub struct Integer {
 
 #[derive(Debug)]
 pub struct Boolean {
-    value: bool,
+    pub value: bool,
 }
+
+
 
 impl Object for Integer {
     fn inspect(&self) -> String {

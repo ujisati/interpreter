@@ -1,6 +1,6 @@
 use crate::{
-    ast::{Expression, ExpressionStmt, Integer, Node, Program, Statement},
-    objects::{Integer as IntObj, ObjectType},
+    ast::{Expression, ExpressionStmt, Integer, Node, Program, Statement, Boolean, Prefix},
+    objects::{Integer as IntObj, Boolean as BoolObj, ObjectType},
 };
 
 pub trait Eval {
@@ -26,6 +26,12 @@ impl Eval for Integer {
     }
 }
 
+impl Eval for Boolean {
+    fn eval(&self) -> ObjectType {
+        ObjectType::Boolean(BoolObj { value: self.value })
+    }
+}
+
 impl Eval for Statement {
     fn eval(&self) -> ObjectType {
         match self {
@@ -47,15 +53,41 @@ impl Eval for ExpressionStmt {
 impl Eval for Expression {
     fn eval(&self) -> ObjectType {
         match self {
+            Expression::Integer(i) => i.eval(),
+            Expression::Prefix(i) => i.eval(),
+            Expression::Boolean(i) => i.eval(),
             Expression::None => todo!(),
             Expression::Identifier(_) => todo!(),
-            Expression::Integer(i) => i.eval(),
-            Expression::Prefix(_) => todo!(),
             Expression::Infix(_) => todo!(),
-            Expression::Boolean(_) => todo!(),
             Expression::If(_) => todo!(),
             Expression::FnLit(_) => todo!(),
             Expression::Call(_) => todo!(),
+        }
+    }
+}
+
+impl Eval for Prefix {
+    fn eval(&self) -> ObjectType {
+        let right = self.right.eval();
+        match self.operator.as_str() {
+            "!" => util::eval_bang_operator(right),
+            _ => todo!("Need to add null handling. NO NULL :) ")  
+        }
+    }
+}
+
+mod util {
+    use super::*;
+
+    pub fn eval_bang_operator(right: ObjectType) -> ObjectType {
+        match right {
+            ObjectType::Boolean(i) => {
+                if i.value {
+                    return ObjectType::Boolean(BoolObj { value: false })
+                }
+                return ObjectType::Boolean(BoolObj { value: true })
+            }
+            _ => ObjectType::Boolean(BoolObj { value: false })
         }
     }
 }
@@ -81,12 +113,46 @@ mod tests {
         assert!(int_obj.value == expected);
     }
 
+    fn assert_bool_object(obj: ObjectType, expected: bool) {
+        let bool_obj = match obj {
+            ObjectType::Boolean(i) => i,
+            _ => todo!(),
+        };
+        assert!(bool_obj.value == expected);
+
+    }
+
     #[test]
     fn test_eval_int_expression() {
         let tests = [("5", 5), ("10", 10)];
         for (input, expected) in tests {
             let evaluated = get_eval(input);
             assert_int_object(evaluated, expected)
+        }
+    }
+
+    #[test]
+    fn test_eval_bool_expression() {
+        let tests = [("true", true), ("false", false)];
+        for (input, expected) in tests {
+            let evaluated = get_eval(input);
+            assert_bool_object(evaluated, expected);
+        }
+    }
+    
+    #[test]
+    fn test_bang_operator() {
+        let tests = [
+            ("!true", false),
+            ("!false", true),
+            ("!5", false),
+            ("!!true", true),
+            ("!!false", false),
+            ("!!5", true)
+        ];
+        for (input, expected) in tests {
+            let evaluated = get_eval(input);
+            assert_bool_object(evaluated, expected);
         }
     }
 }

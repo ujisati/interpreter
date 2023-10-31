@@ -27,6 +27,8 @@ fn main() -> io::Result<()> {
             println!("{:?}", parser.errors);
             continue;
         }
+        // Enable this for ast printing
+        // println!("{:?}", program);
         let evaluated = program.eval();
         println!("{:?}", evaluated);
     }
