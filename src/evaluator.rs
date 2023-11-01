@@ -121,6 +121,9 @@ mod util {
             "+" => ObjectType::Integer(IntObj {
                 value: left.value + right.value,
             }),
+            "-" => ObjectType::Integer(IntObj { value: left.value - right.value }),
+            "*" => ObjectType::Integer(IntObj { value: left.value * right.value }),
+            "/" => ObjectType::Integer(IntObj { value: left.value / right.value }),
             _ => todo!("Better error handling"),
         }
     }
