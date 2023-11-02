@@ -1,5 +1,8 @@
 use crate::{
-    ast::{Boolean, Expression, ExpressionStmt, Infix, Integer, Node, Prefix, Program, Statement},
+    ast::{
+        Block, Boolean, Expression, ExpressionStmt, If, Infix, Integer, Node, Prefix, Program,
+        Statement,
+    },
     objects::{Boolean as BoolObj, Integer as IntObj, ObjectType},
 };
 
@@ -59,7 +62,7 @@ impl Eval for Expression {
             Expression::Infix(i) => i.eval(),
             Expression::None => todo!(),
             Expression::Identifier(_) => todo!(),
-            Expression::If(_) => todo!(),
+            Expression::If(i) => i.eval(),
             Expression::FnLit(_) => todo!(),
             Expression::Call(_) => todo!(),
         }
@@ -82,6 +85,35 @@ impl Eval for Infix {
         let left = self.left.eval();
         let right = self.right.eval();
         util::eval_infix_expression(&self.operator, left, right)
+    }
+}
+
+impl Eval for If {
+    fn eval(&self) -> ObjectType {
+        let condition_is_true = match self.condition.eval() {
+            ObjectType::Boolean(i) => i.value,
+            _ => todo!("Better error handling"),
+        };
+        if condition_is_true {
+            return self.consequence.as_ref().eval();
+        }
+        match &self.alternative {
+            Some(i) => return i.as_ref().eval(),
+            None => return ObjectType::None,
+        }
+    }
+}
+
+impl Eval for Block {
+    fn eval(&self) -> ObjectType {
+        let mut result = None;
+        for stmt in &self.statements {
+            result = Some(stmt.eval());
+        }
+        match result {
+            Some(r) => return r,
+            None => ObjectType::None,
+        }
     }
 }
 
@@ -109,10 +141,13 @@ mod util {
 
     pub fn eval_infix_expression(op: &String, left: ObjectType, right: ObjectType) -> ObjectType {
         match (left, right) {
-            (ObjectType::Integer(i1), ObjectType::Integer(i2)) => eval_integer_infix_expression(op, i1, i2),
-            (ObjectType::Integer(_), ObjectType::Boolean(_)) => todo!(),
-            (ObjectType::Boolean(_), ObjectType::Integer(_)) => todo!(),
-            (ObjectType::Boolean(_), ObjectType::Boolean(_)) => todo!(),
+            (ObjectType::Integer(i1), ObjectType::Integer(i2)) => {
+                eval_integer_infix_expression(op, i1, i2)
+            }
+            (ObjectType::Boolean(b1), ObjectType::Boolean(b2)) => {
+                eval_bool_infix_expression(op, b1, b2)
+            }
+            _ => todo!("Better error handling"),
         }
     }
 
@@ -121,9 +156,39 @@ mod util {
             "+" => ObjectType::Integer(IntObj {
                 value: left.value + right.value,
             }),
-            "-" => ObjectType::Integer(IntObj { value: left.value - right.value }),
-            "*" => ObjectType::Integer(IntObj { value: left.value * right.value }),
-            "/" => ObjectType::Integer(IntObj { value: left.value / right.value }),
+            "-" => ObjectType::Integer(IntObj {
+                value: left.value - right.value,
+            }),
+            "*" => ObjectType::Integer(IntObj {
+                value: left.value * right.value,
+            }),
+            "/" => ObjectType::Integer(IntObj {
+                value: left.value / right.value,
+            }),
+            "<" => ObjectType::Boolean(BoolObj {
+                value: left.value < right.value,
+            }),
+            ">" => ObjectType::Boolean(BoolObj {
+                value: left.value > right.value,
+            }),
+            "==" => ObjectType::Boolean(BoolObj {
+                value: left.value == right.value,
+            }),
+            "!=" => ObjectType::Boolean(BoolObj {
+                value: left.value != right.value,
+            }),
+            _ => todo!("Better error handling"),
+        }
+    }
+
+    fn eval_bool_infix_expression(op: &String, left: BoolObj, right: BoolObj) -> ObjectType {
+        match op.as_str() {
+            "==" => ObjectType::Boolean(BoolObj {
+                value: left.value == right.value,
+            }),
+            "!=" => ObjectType::Boolean(BoolObj {
+                value: left.value != right.value,
+            }),
             _ => todo!("Better error handling"),
         }
     }
@@ -134,7 +199,6 @@ mod tests {
     use crate::{lexer::Lexer, parser::Parser};
 
     use super::*;
-
     fn get_eval(input: &str) -> ObjectType {
         let lexer = Lexer::new(input.into());
         let mut parser = Parser::new(lexer);
@@ -189,7 +253,27 @@ mod tests {
 
     #[test]
     fn test_eval_bool_expression() {
-        let tests = [("true", true), ("false", false)];
+        let tests = [
+            ("true", true),
+            ("false", false),
+            ("1 < 2", true),
+            ("1 > 2", false),
+            ("1 < 1", false),
+            ("1 > 1", false),
+            ("1 == 1", true),
+            ("1 != 1", false),
+            ("1 == 2", false),
+            ("1 != 2", true),
+            ("true == true", true),
+            ("false == false", true),
+            ("true == false", false),
+            ("true != false", true),
+            ("false != true", true),
+            ("(1 < 2) == true", true),
+            ("(1 < 2) == false", false),
+            ("(1 > 2) == true", false),
+            ("(1 > 2) == false", true),
+        ];
         for (input, expected) in tests {
             let evaluated = get_eval(input);
             assert_bool_object(evaluated, expected);
@@ -209,6 +293,26 @@ mod tests {
         for (input, expected) in tests {
             let evaluated = get_eval(input);
             assert_bool_object(evaluated, expected);
+        }
+    }
+
+    #[test]
+    fn test_if_else_expression() {
+        let tests = [
+            ("if (true) { 10 }", Some(10)),
+            ("if (false) { 10 }", None),
+            ("if (1 < 2) { 10 }", Some(10)),
+            ("if (1 > 2) { 10 }", None),
+            ("if (1 > 2) { 10 } else { 20 }", Some(20)),
+            ("if (1 < 2) { 10 } else { 20 }", Some(10)),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = get_eval(input);
+            match expected {
+                Some(i) => assert_int_object(evaluated, i),
+                None => assert!(evaluated == ObjectType::None),
+            }
         }
     }
 }

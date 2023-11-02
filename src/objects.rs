@@ -3,18 +3,19 @@ pub trait Object {
     // fn object_type(&self) -> ObjectType;
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ObjectType {
+    None, // This is not a None object type, but akin to Option<ObjectType>
     Integer(Integer),
     Boolean(Boolean),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Integer {
     pub value: i64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Boolean {
     pub value: bool,
 }
