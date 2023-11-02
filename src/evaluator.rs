@@ -107,14 +107,15 @@ impl Eval for If {
 
 impl Eval for Block {
     fn eval(&self) -> ObjectType {
-        let mut result = None;
+        let mut result = ObjectType::None;
         for stmt in &self.statements {
-            result = Some(stmt.eval());
+            let evaluated = stmt.eval();
+            match evaluated {
+                ObjectType::Return { .. } => return evaluated,
+                _ => result = evaluated,
+            }
         }
-        match result {
-            Some(r) => return r,
-            None => ObjectType::None,
-        }
+        result
     }
 }
 
@@ -341,6 +342,15 @@ mod tests {
             ("return 1; 9;", 1),
             ("return 2 * 5; 9;", 10),
             ("9; return 2 * 5; 9;", 10),
+            (
+                "if (10 > 1) {
+                    if (10 > 1) {
+                        return 10;
+                    }
+                    return 1;
+                }",
+                10,
+            ),
         ];
 
         for (input, expected) in tests {

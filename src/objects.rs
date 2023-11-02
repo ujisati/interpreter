@@ -1,6 +1,5 @@
 pub trait Object {
     fn inspect(&self) -> String;
-    // fn object_type(&self) -> ObjectType;
 }
 
 #[derive(Debug, PartialEq)]
