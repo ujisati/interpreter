@@ -1,9 +1,9 @@
 use crate::{
     ast::{
         Block, Boolean, Expression, ExpressionStmt, If, Infix, Integer, Node, Prefix, Program,
-        Statement, Return,
+        Return, Statement,
     },
-    objects::{ ObjectType},
+    objects::ObjectType,
 };
 
 pub trait Eval {
@@ -12,20 +12,21 @@ pub trait Eval {
 
 impl Eval for Program {
     fn eval(&self) -> ObjectType {
-        let mut result = None;
+        let mut result = ObjectType::None;
         for stmt in &self.statements {
-            result = Some(stmt.eval());
+            let evaluated = stmt.eval();
+            match evaluated {
+                ObjectType::Return { obj_type } => return *obj_type,
+                _ => result = evaluated,
+            }
         }
-        match result {
-            Some(r) => return r,
-            None => panic!("No statements where evaluated"), // TODO: better error handling
-        }
+        result
     }
 }
 
 impl Eval for Integer {
     fn eval(&self) -> ObjectType {
-        ObjectType::Integer{ value: self.value }
+        ObjectType::Integer { value: self.value }
     }
 }
 
@@ -119,7 +120,9 @@ impl Eval for Block {
 
 impl Eval for Return {
     fn eval(&self) -> ObjectType {
-        ObjectType::Return { obj_type: Box::new(self.return_value.eval())}
+        ObjectType::Return {
+            obj_type: Box::new(self.return_value.eval()),
+        }
     }
 }
 
@@ -128,7 +131,7 @@ mod util {
 
     pub fn eval_bang_operator(right: ObjectType) -> ObjectType {
         match right {
-            ObjectType::Boolean {value} => {
+            ObjectType::Boolean { value } => {
                 if value {
                     return ObjectType::Boolean { value: false };
                 }
@@ -140,8 +143,7 @@ mod util {
 
     pub fn eval_minus_operator(right: ObjectType) -> ObjectType {
         match right {
-            ObjectType::None => todo!(),
-            ObjectType::Integer { value } => todo!(),
+            ObjectType::Integer { value } => ObjectType::Integer { value: -value },
             _ => todo!()
 
             // ObjectType::Integer(i) => return ObjectType::Integer{value: -i.value},
@@ -151,16 +153,18 @@ mod util {
 
     pub fn eval_infix_expression(op: &String, left: ObjectType, right: ObjectType) -> ObjectType {
         match (left, right) {
-            (ObjectType::Integer { value: val1 }, ObjectType::Integer { value: val2 }) => eval_integer_infix_expression(op, val1, val2),
-            (ObjectType::Boolean { value: val1 }, ObjectType::Boolean { value: val2 }) => eval_bool_infix_expression(op, val1, val2),
-            _ => todo!("Better error handling")
-            // (ObjectType::Integer(i1), ObjectType::Integer(i2)) => {
-            //     eval_integer_infix_expression(op, i1, i2)
-            // }
-            // (ObjectType::Boolean(b1), ObjectType::Boolean(b2)) => {
-            //     eval_bool_infix_expression(op, b1, b2)
-            // }
-            
+            (ObjectType::Integer { value: val1 }, ObjectType::Integer { value: val2 }) => {
+                eval_integer_infix_expression(op, val1, val2)
+            }
+            (ObjectType::Boolean { value: val1 }, ObjectType::Boolean { value: val2 }) => {
+                eval_bool_infix_expression(op, val1, val2)
+            }
+            _ => todo!("Better error handling"), // (ObjectType::Integer(i1), ObjectType::Integer(i2)) => {
+                                                 //     eval_integer_infix_expression(op, i1, i2)
+                                                 // }
+                                                 // (ObjectType::Boolean(b1), ObjectType::Boolean(b2)) => {
+                                                 //     eval_bool_infix_expression(op, b1, b2)
+                                                 // }
         }
     }
 
@@ -222,7 +226,7 @@ mod tests {
     fn assert_int_object(obj: ObjectType, expected: i64) {
         let int_obj = match obj {
             ObjectType::Integer { value } => value,
-            _ => todo!()
+            _ => panic!("Expected integer object, got {:?}", obj),
         };
         assert!(int_obj == expected);
     }
