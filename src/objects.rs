@@ -6,36 +6,14 @@ pub trait Object {
 #[derive(Debug, PartialEq)]
 pub enum ObjectType {
     None, // This is not a None object type, but akin to Option<ObjectType>
-    Integer(Integer),
-    Boolean(Boolean),
-}
-
-#[derive(Debug, PartialEq)]
-pub struct Integer {
-    pub value: i64,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct Boolean {
-    pub value: bool,
-}
-
-impl Object for Integer {
-    fn inspect(&self) -> String {
-        self.value.to_string()
+    Integer {
+        value: i64
+    },
+    Boolean {
+        value: bool
+    },
+    Return {
+        obj_type: Box<ObjectType>
     }
-
-    // fn object_type(&self) -> ObjectType {
-    //     ObjectType::Integer
-    // }
 }
 
-impl Object for Boolean {
-    fn inspect(&self) -> String {
-        self.value.to_string()
-    }
-
-    // fn object_type(&self) -> ObjectType {
-    //     ObjectType::Boolean
-    // }
-}

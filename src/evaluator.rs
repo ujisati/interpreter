@@ -1,9 +1,9 @@
 use crate::{
     ast::{
         Block, Boolean, Expression, ExpressionStmt, If, Infix, Integer, Node, Prefix, Program,
-        Statement,
+        Statement, Return,
     },
-    objects::{Boolean as BoolObj, Integer as IntObj, ObjectType},
+    objects::{ ObjectType},
 };
 
 pub trait Eval {
@@ -25,13 +25,13 @@ impl Eval for Program {
 
 impl Eval for Integer {
     fn eval(&self) -> ObjectType {
-        ObjectType::Integer(IntObj { value: self.value })
+        ObjectType::Integer{ value: self.value }
     }
 }
 
 impl Eval for Boolean {
     fn eval(&self) -> ObjectType {
-        ObjectType::Boolean(BoolObj { value: self.value })
+        ObjectType::Boolean { value: self.value }
     }
 }
 
@@ -40,7 +40,7 @@ impl Eval for Statement {
         match self {
             Statement::None => todo!(),
             Statement::Let(i) => todo!(),
-            Statement::Return(i) => todo!(),
+            Statement::Return(i) => i.eval(),
             Statement::ExpressionStmt(i) => i.eval(),
             Statement::Block(i) => todo!(),
         }
@@ -91,7 +91,7 @@ impl Eval for Infix {
 impl Eval for If {
     fn eval(&self) -> ObjectType {
         let condition_is_true = match self.condition.eval() {
-            ObjectType::Boolean(i) => i.value,
+            ObjectType::Boolean { value } => value,
             _ => todo!("Better error handling"),
         };
         if condition_is_true {
@@ -117,78 +117,91 @@ impl Eval for Block {
     }
 }
 
+impl Eval for Return {
+    fn eval(&self) -> ObjectType {
+        ObjectType::Return { obj_type: Box::new(self.return_value.eval())}
+    }
+}
+
 mod util {
     use super::*;
 
     pub fn eval_bang_operator(right: ObjectType) -> ObjectType {
         match right {
-            ObjectType::Boolean(i) => {
-                if i.value {
-                    return ObjectType::Boolean(BoolObj { value: false });
+            ObjectType::Boolean {value} => {
+                if value {
+                    return ObjectType::Boolean { value: false };
                 }
-                return ObjectType::Boolean(BoolObj { value: true });
+                return ObjectType::Boolean { value: true };
             }
-            _ => ObjectType::Boolean(BoolObj { value: false }),
+            _ => ObjectType::Boolean { value: false },
         }
     }
 
     pub fn eval_minus_operator(right: ObjectType) -> ObjectType {
         match right {
-            ObjectType::Integer(i) => return ObjectType::Integer(IntObj { value: -i.value }),
-            _ => todo!("Better error handling"),
+            ObjectType::None => todo!(),
+            ObjectType::Integer { value } => todo!(),
+            _ => todo!()
+
+            // ObjectType::Integer(i) => return ObjectType::Integer{value: -i.value},
+            // _ => todo!("Better error handling"),
         }
     }
 
     pub fn eval_infix_expression(op: &String, left: ObjectType, right: ObjectType) -> ObjectType {
         match (left, right) {
-            (ObjectType::Integer(i1), ObjectType::Integer(i2)) => {
-                eval_integer_infix_expression(op, i1, i2)
-            }
-            (ObjectType::Boolean(b1), ObjectType::Boolean(b2)) => {
-                eval_bool_infix_expression(op, b1, b2)
-            }
+            (ObjectType::Integer { value: val1 }, ObjectType::Integer { value: val2 }) => eval_integer_infix_expression(op, val1, val2),
+            (ObjectType::Boolean { value: val1 }, ObjectType::Boolean { value: val2 }) => eval_bool_infix_expression(op, val1, val2),
+            _ => todo!("Better error handling")
+            // (ObjectType::Integer(i1), ObjectType::Integer(i2)) => {
+            //     eval_integer_infix_expression(op, i1, i2)
+            // }
+            // (ObjectType::Boolean(b1), ObjectType::Boolean(b2)) => {
+            //     eval_bool_infix_expression(op, b1, b2)
+            // }
+            
+        }
+    }
+
+    fn eval_integer_infix_expression(op: &String, left: i64, right: i64) -> ObjectType {
+        match op.as_str() {
+            "+" => ObjectType::Integer {
+                value: left + right,
+            },
+            "-" => ObjectType::Integer {
+                value: left - right,
+            },
+            "*" => ObjectType::Integer {
+                value: left * right,
+            },
+            "/" => ObjectType::Integer {
+                value: left / right,
+            },
+            "<" => ObjectType::Boolean {
+                value: left < right,
+            },
+            ">" => ObjectType::Boolean {
+                value: left > right,
+            },
+            "==" => ObjectType::Boolean {
+                value: left == right,
+            },
+            "!=" => ObjectType::Boolean {
+                value: left != right,
+            },
             _ => todo!("Better error handling"),
         }
     }
 
-    fn eval_integer_infix_expression(op: &String, left: IntObj, right: IntObj) -> ObjectType {
+    fn eval_bool_infix_expression(op: &String, left: bool, right: bool) -> ObjectType {
         match op.as_str() {
-            "+" => ObjectType::Integer(IntObj {
-                value: left.value + right.value,
-            }),
-            "-" => ObjectType::Integer(IntObj {
-                value: left.value - right.value,
-            }),
-            "*" => ObjectType::Integer(IntObj {
-                value: left.value * right.value,
-            }),
-            "/" => ObjectType::Integer(IntObj {
-                value: left.value / right.value,
-            }),
-            "<" => ObjectType::Boolean(BoolObj {
-                value: left.value < right.value,
-            }),
-            ">" => ObjectType::Boolean(BoolObj {
-                value: left.value > right.value,
-            }),
-            "==" => ObjectType::Boolean(BoolObj {
-                value: left.value == right.value,
-            }),
-            "!=" => ObjectType::Boolean(BoolObj {
-                value: left.value != right.value,
-            }),
-            _ => todo!("Better error handling"),
-        }
-    }
-
-    fn eval_bool_infix_expression(op: &String, left: BoolObj, right: BoolObj) -> ObjectType {
-        match op.as_str() {
-            "==" => ObjectType::Boolean(BoolObj {
-                value: left.value == right.value,
-            }),
-            "!=" => ObjectType::Boolean(BoolObj {
-                value: left.value != right.value,
-            }),
+            "==" => ObjectType::Boolean {
+                value: left == right,
+            },
+            "!=" => ObjectType::Boolean {
+                value: left != right,
+            },
             _ => todo!("Better error handling"),
         }
     }
@@ -208,18 +221,18 @@ mod tests {
 
     fn assert_int_object(obj: ObjectType, expected: i64) {
         let int_obj = match obj {
-            ObjectType::Integer(i) => i,
-            _ => todo!(),
+            ObjectType::Integer { value } => value,
+            _ => todo!()
         };
-        assert!(int_obj.value == expected);
+        assert!(int_obj == expected);
     }
 
     fn assert_bool_object(obj: ObjectType, expected: bool) {
         let bool_obj = match obj {
-            ObjectType::Boolean(i) => i,
+            ObjectType::Boolean { value } => value,
             _ => todo!(),
         };
-        assert!(bool_obj.value == expected);
+        assert!(bool_obj == expected);
     }
 
     #[test]
@@ -313,6 +326,22 @@ mod tests {
                 Some(i) => assert_int_object(evaluated, i),
                 None => assert!(evaluated == ObjectType::None),
             }
+        }
+    }
+
+    #[test]
+    fn test_return_statements() {
+        let tests = [
+            ("1; return 10;", 10),
+            ("return 11;", 11),
+            ("return 1; 9;", 1),
+            ("return 2 * 5; 9;", 10),
+            ("9; return 2 * 5; 9;", 10),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = get_eval(input);
+            assert_int_object(evaluated, expected)
         }
     }
 }
