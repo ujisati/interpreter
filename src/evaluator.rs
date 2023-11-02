@@ -1,13 +1,11 @@
-use std::{rc::Rc, cell::RefCell};
 use crate::{
     ast::{
-        Block, Boolean, Expression, ExpressionStmt, If, Infix, Integer, Node, Prefix, Program,
-        Return, Statement, Let, Identifier,
+        Block, Boolean, Expression, ExpressionStmt, Identifier, If, Infix, Integer, Let, Node,
+        Prefix, Program, Return, Statement,
     },
-    objects::{ObjectType, Environment, Obj},
+    objects::{Environment, Obj, ObjectType},
 };
-
-
+use std::{cell::RefCell, rc::Rc};
 
 // Rc<RefCell> gives us interior mutability (refcell) without worrying about reference lifetimes (rc)
 
@@ -106,7 +104,7 @@ impl Eval for If {
         }
         match &self.alternative {
             Some(i) => return i.as_ref().eval(env),
-            None => return env.get_none()
+            None => return env.get_none(),
         }
     }
 }
@@ -129,7 +127,7 @@ impl Eval for Block {
 impl Eval for Return {
     fn eval(&self, env: &mut Environment) -> Obj {
         get_obj(ObjectType::Return {
-            obj: self.return_value.eval(env)
+            obj: self.return_value.eval(env),
         })
     }
 }
@@ -146,7 +144,7 @@ impl Eval for Identifier {
     fn eval(&self, env: &mut Environment) -> Obj {
         match env.store.get(&self.value) {
             Some(value) => value.clone(),
-            None => todo!("Identifier not defined")
+            None => todo!("Identifier not defined"),
         }
     }
 }
@@ -173,15 +171,14 @@ mod eval_util {
                 }
                 return env.get_false();
             }
-            _ => todo!("Cannot negate object type {:?}", obj_type)
-            
+            _ => todo!("Cannot negate object type {:?}", obj_type),
         }
     }
 
     pub fn eval_minus_operator(right: Obj) -> Obj {
         match *right.borrow() {
             ObjectType::Integer { value } => get_obj(ObjectType::Integer { value: -value }),
-            _ => todo!()
+            _ => todo!(),
         }
     }
 
@@ -193,7 +190,7 @@ mod eval_util {
             (ObjectType::Boolean { value: val1 }, ObjectType::Boolean { value: val2 }) => {
                 eval_bool_infix_expression(op, val1, val2)
             }
-            _ => todo!("Better error handling"), 
+            _ => todo!("Better error handling"),
         }
     }
 
@@ -240,9 +237,7 @@ mod eval_util {
         };
         get_obj(obj_type)
     }
-
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -406,6 +401,5 @@ mod tests {
             let evaluated = get_eval(input);
             assert_int_object(evaluated, expected)
         }
- 
     }
 }

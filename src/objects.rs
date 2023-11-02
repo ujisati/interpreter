@@ -1,10 +1,6 @@
-use std::{collections::HashMap, rc::Rc, cell::RefCell};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub type Obj = Rc<RefCell<ObjectType>>;
-
-pub trait Object {
-    fn inspect(&self) -> String;
-}
 
 #[derive(Debug, PartialEq)]
 pub enum ObjectType {
@@ -14,14 +10,28 @@ pub enum ObjectType {
     Return { obj: Obj },
 }
 
+impl ObjectType {
+    pub fn inspect(&self) -> String {
+        match self {
+            ObjectType::None => "".into(),
+            ObjectType::Integer { value } => value.to_string(),
+            ObjectType::Boolean { value } => value.to_string(),
+            ObjectType::Return { obj } => obj.borrow().inspect(),
+        }
+    }
+}
+
 pub struct Environment {
-    pub store: HashMap<String, Obj> ,
-    pub obj_pool: HashMap<String, Obj> 
+    pub store: HashMap<String, Obj>,
+    pub obj_pool: HashMap<String, Obj>,
 }
 
 impl Environment {
     pub fn new() -> Self {
-        Environment { store: HashMap::new(), obj_pool: HashMap::new() }
+        Environment {
+            store: HashMap::new(),
+            obj_pool: HashMap::new(),
+        }
     }
 
     pub fn get_true(&mut self) -> Obj {
@@ -31,7 +41,6 @@ impl Environment {
                 let t = Rc::new(RefCell::new(ObjectType::Boolean { value: true }));
                 self.obj_pool.insert("true".into(), t.clone());
                 t
-
             }
         }
     }
@@ -43,7 +52,6 @@ impl Environment {
                 let f = Rc::new(RefCell::new(ObjectType::Boolean { value: false }));
                 self.obj_pool.insert("false".into(), f.clone());
                 f
-
             }
         }
     }
