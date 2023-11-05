@@ -2,15 +2,17 @@ extern crate lang;
 use lang::evaluator::Eval;
 use lang::objects::Environment;
 use lang::{ast::DebugString, parser::Parser};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io;
 use std::io::Write;
+use std::rc::Rc;
 
 use crate::lang::lexer::Lexer;
 
 fn main() -> io::Result<()> {
     println!("Cash lang v0.1\n(Sorry if it panics)");
-    let env = &mut Environment::new();
+    let env = Rc::new(RefCell::new(Environment::new()));
     loop {
         print!("\u{001b}[32m>>\u{001b}[37m ");
         io::stdout().flush()?;
@@ -33,7 +35,7 @@ fn main() -> io::Result<()> {
         }
         // Enable this for ast printing
         // println!("{:?}", program);
-        let evaluated = program.eval(env).borrow().inspect();
+        let evaluated = program.eval(env.clone()).borrow().inspect();
         if evaluated != "" {
             println!("{}", evaluated);
         }

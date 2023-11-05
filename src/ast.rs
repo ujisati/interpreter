@@ -20,7 +20,7 @@ pub struct Program {
     pub literal: String, //just to satisfy the interface
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     None,
     Identifier(Identifier),
@@ -39,20 +39,20 @@ pub struct Identifier {
     pub value: String,
 }
 
-#[derive(Node, Debug)]
+#[derive(Node, Debug, Clone)]
 pub struct Integer {
     pub token: Token,
     pub value: i64,
 }
 
-#[derive(Node, Debug)]
+#[derive(Node, Debug, Clone)]
 pub struct Prefix {
     pub token: Token,
     pub operator: String,
     pub right: Box<Expression>,
 }
 
-#[derive(Node, Debug)]
+#[derive(Node, Debug, Clone)]
 pub struct Infix {
     pub token: Token,
     pub operator: String,
@@ -60,13 +60,13 @@ pub struct Infix {
     pub right: Box<Expression>,
 }
 
-#[derive(Node, Debug)]
+#[derive(Node, Debug, Clone)]
 pub struct Boolean {
     pub token: Token,
     pub value: bool,
 }
 
-#[derive(Node, Debug)]
+#[derive(Node, Debug, Clone)]
 pub struct If {
     pub token: Token,
     pub condition: Box<Expression>,
@@ -74,7 +74,7 @@ pub struct If {
     pub alternative: Option<Box<Block>>,
 }
 
-#[derive(Node, Debug)]
+#[derive(Node, Debug, Clone)]
 pub struct FnLit {
     pub token: Token,
     pub parameters: Vec<Identifier>,
@@ -87,14 +87,24 @@ pub enum FunctionName {
     FnLit(FnLit),
 }
 
-#[derive(Node, Debug)]
+#[derive(Node, Debug, Clone)]
 pub struct Call {
     pub token: Token,
     pub function: Box<Expression>, // Identifier or FnLit
     pub arguments: Vec<Expression>,
 }
 
-#[derive(Debug)]
+// impl Call {
+//     pub fn get_function_name(&self) -> &String {
+//         match *self.function {
+//             Expression::Identifier(i) => &i.value,
+//             Expression::FnLit(i) => &i.value,
+//             _ => todo!("Expected Identifier or FnLit")
+//         }
+//     }
+// }
+
+#[derive(Debug, Clone)]
 pub enum Statement {
     None,
     Let(Let),
@@ -103,26 +113,26 @@ pub enum Statement {
     Block(Block),
 }
 
-#[derive(Node, Debug)]
+#[derive(Node, Debug, Clone)]
 pub struct Let {
     pub token: Token,
     pub name: Identifier,
     pub value: Expression,
 }
 
-#[derive(Node, Debug)]
+#[derive(Node, Debug, Clone)]
 pub struct Return {
     pub token: Token,
     pub return_value: Expression,
 }
 
-#[derive(Node, Debug)]
+#[derive(Node, Debug, Clone)]
 pub struct ExpressionStmt {
     pub token: Token,
     pub expression: Expression,
 }
 
-#[derive(Node, Debug)]
+#[derive(Node, Debug, Clone)]
 pub struct Block {
     pub token: Token,
     pub statements: Vec<Statement>,

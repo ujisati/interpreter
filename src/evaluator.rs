@@ -1,23 +1,23 @@
 use crate::{
     ast::{
-        Block, Boolean, Expression, ExpressionStmt, Identifier, If, Infix, Integer, Let, Node,
-        Prefix, Program, Return, Statement,
+        Block, Boolean, DebugString, Expression, ExpressionStmt, FnLit, Identifier, If, Infix,
+        Integer, Let, Node, Prefix, Program, Return, Statement, Call,
     },
-    objects::{Environment, Obj, ObjectType},
+    objects::{Env, Environment, Obj, ObjectType},
 };
 use std::{cell::RefCell, rc::Rc};
 
 // Rc<RefCell> gives us interior mutability (refcell) without worrying about reference lifetimes (rc)
 
 pub trait Eval {
-    fn eval(&self, env: &mut Environment) -> Obj;
+    fn eval(&self, env: Env) -> Obj;
 }
 
 impl Eval for Program {
-    fn eval(&self, env: &mut Environment) -> Obj {
-        let mut result = env.get_none();
+    fn eval(&self, env: Env) -> Obj {
+        let mut result = env.borrow_mut().get_none();
         for stmt in &self.statements {
-            let eval_obj = stmt.eval(env);
+            let eval_obj = stmt.eval(env.clone());
             let eval_type = eval_obj.borrow();
             match &*eval_type {
                 ObjectType::Return { obj } => return obj.clone(),
@@ -29,19 +29,19 @@ impl Eval for Program {
 }
 
 impl Eval for Integer {
-    fn eval(&self, env: &mut Environment) -> Obj {
+    fn eval(&self, env: Env) -> Obj {
         get_obj(ObjectType::Integer { value: self.value })
     }
 }
 
 impl Eval for Boolean {
-    fn eval(&self, env: &mut Environment) -> Obj {
+    fn eval(&self, env: Env) -> Obj {
         get_obj(ObjectType::Boolean { value: self.value })
     }
 }
 
 impl Eval for Statement {
-    fn eval(&self, env: &mut Environment) -> Obj {
+    fn eval(&self, env: Env) -> Obj {
         match self {
             Statement::None => todo!(),
             Statement::Let(i) => i.eval(env),
@@ -53,13 +53,13 @@ impl Eval for Statement {
 }
 
 impl Eval for ExpressionStmt {
-    fn eval(&self, env: &mut Environment) -> Obj {
+    fn eval(&self, env: Env) -> Obj {
         self.expression.eval(env)
     }
 }
 
 impl Eval for Expression {
-    fn eval(&self, env: &mut Environment) -> Obj {
+    fn eval(&self, env: Env) -> Obj {
         match self {
             Expression::Integer(i) => i.eval(env),
             Expression::Prefix(i) => i.eval(env),
@@ -68,17 +68,17 @@ impl Eval for Expression {
             Expression::None => todo!(),
             Expression::Identifier(i) => i.eval(env),
             Expression::If(i) => i.eval(env),
-            Expression::FnLit(_) => todo!(),
-            Expression::Call(_) => todo!(),
+            Expression::FnLit(i) => i.eval(env),
+            Expression::Call(i) => i.eval(env)
         }
     }
 }
 
 impl Eval for Prefix {
-    fn eval(&self, env: &mut Environment) -> Obj {
-        let right = self.right.eval(env);
+    fn eval(&self, env: Env) -> Obj {
+        let right = self.right.eval(env.clone());
         match self.operator.as_str() {
-            "!" => eval_util::eval_bang_operator(right, env),
+            "!" => eval_util::eval_bang_operator(right, env.clone()),
             "-" => eval_util::eval_minus_operator(right),
             _ => todo!("Need to add null handling. NO NULL :) "),
         }
@@ -86,16 +86,16 @@ impl Eval for Prefix {
 }
 
 impl Eval for Infix {
-    fn eval(&self, env: &mut Environment) -> Obj {
-        let left = self.left.eval(env);
+    fn eval(&self, env: Env) -> Obj {
+        let left = self.left.eval(env.clone());
         let right = self.right.eval(env);
         eval_util::eval_infix_expression(&self.operator, left, right)
     }
 }
 
 impl Eval for If {
-    fn eval(&self, env: &mut Environment) -> Obj {
-        let condition_is_true = match *self.condition.eval(env).borrow() {
+    fn eval(&self, env: Env) -> Obj {
+        let condition_is_true = match *self.condition.eval(env.clone()).borrow() {
             ObjectType::Boolean { value } => value,
             _ => todo!("Better error handling"),
         };
@@ -104,16 +104,16 @@ impl Eval for If {
         }
         match &self.alternative {
             Some(i) => return i.as_ref().eval(env),
-            None => return env.get_none(),
+            None => return env.borrow_mut().get_none(),
         }
     }
 }
 
 impl Eval for Block {
-    fn eval(&self, env: &mut Environment) -> Obj {
-        let mut result = env.get_none();
+    fn eval(&self, env: Env) -> Obj {
+        let mut result = env.borrow_mut().get_none();
         for stmt in &self.statements {
-            let obj = stmt.eval(env);
+            let obj = stmt.eval(env.clone());
             let obj_type = obj.borrow();
             match &*obj_type {
                 ObjectType::Return { .. } => return obj.clone(),
@@ -125,7 +125,7 @@ impl Eval for Block {
 }
 
 impl Eval for Return {
-    fn eval(&self, env: &mut Environment) -> Obj {
+    fn eval(&self, env: Env) -> Obj {
         get_obj(ObjectType::Return {
             obj: self.return_value.eval(env),
         })
@@ -133,19 +133,45 @@ impl Eval for Return {
 }
 
 impl Eval for Let {
-    fn eval(&self, env: &mut Environment) -> Obj {
-        let value = self.value.eval(env);
-        env.store.insert(self.name.value.clone(), value);
-        env.get_none()
+    fn eval(&self, env: Env) -> Obj {
+        let value = self.value.eval(env.clone());
+        env.borrow_mut()
+            .store
+            .insert(self.name.value.clone(), value);
+        env.borrow_mut().get_none()
     }
 }
 
 impl Eval for Identifier {
-    fn eval(&self, env: &mut Environment) -> Obj {
-        match env.store.get(&self.value) {
+    fn eval(&self, env: Env) -> Obj {
+        match env.borrow().store.get(&self.value) {
             Some(value) => value.clone(),
             None => todo!("Identifier not defined"),
         }
+    }
+}
+
+impl Eval for FnLit {
+    fn eval(&self, env: Env) -> Obj {
+        get_obj(ObjectType::Function {
+            parameters: self.parameters.clone(),
+            body: self.body.clone(),
+            env: Environment::new_inner(env),
+        })
+    }
+}
+
+impl Eval for Call {
+    fn eval(&self, env: Env) -> Obj {
+        let function = self.function.eval(env.clone());
+        let args = eval_util::eval_expressions(&self.arguments, env);
+        let inner_env = 
+        for (i, arg) in args.iter().enumerate() {
+
+
+        };
+        todo!()
+
     }
 }
 
@@ -156,8 +182,9 @@ fn get_obj(obj_type: ObjectType) -> Obj {
 mod eval_util {
     use super::*;
 
-    pub fn eval_bang_operator(right: Obj, env: &mut Environment) -> Obj {
+    pub fn eval_bang_operator(right: Obj, env: Env) -> Obj {
         let obj_type = right.borrow();
+        let mut env = env.borrow_mut();
         match *obj_type {
             ObjectType::Boolean { value } => {
                 if value {
@@ -237,6 +264,16 @@ mod eval_util {
         };
         get_obj(obj_type)
     }
+    
+    pub fn eval_expressions(expressions: &Vec<Expression>, env: Env) -> Vec<Obj> {
+        let mut evaluated = Vec::new();
+        for expression in expressions {
+            evaluated.push(expression.eval(env.clone()))
+        }
+        evaluated
+
+    }
+
 }
 
 #[cfg(test)]
@@ -250,7 +287,7 @@ mod tests {
         let lexer = Lexer::new(input.into());
         let mut parser = Parser::new(lexer);
         let program = parser.parse().unwrap();
-        let env = &mut Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         program.eval(env)
     }
 
@@ -359,7 +396,10 @@ mod tests {
             let evaluated = get_eval(input);
             match expected {
                 Some(i) => assert_int_object(evaluated, i),
-                None => assert!(*evaluated.borrow() == ObjectType::None),
+                None => match *evaluated.borrow() {
+                    ObjectType::None => assert!(true),
+                    _ => panic!("Expected None"),
+                },
             }
         }
     }
@@ -402,4 +442,38 @@ mod tests {
             assert_int_object(evaluated, expected)
         }
     }
+
+    #[test]
+    fn test_function_object() {
+        let input = "fn(x) { x + 2; };";
+        let evaluated = get_eval(input);
+        match &*evaluated.borrow() {
+            ObjectType::Function {
+                parameters, body, ..
+            } => {
+                assert!(parameters.len() == 1);
+                assert!(parameters[0].value == "x");
+                assert!(body.repr() == "(x + 2)");
+            }
+            _ => panic!("Expected a function"),
+        };
+    }
+
+    #[test]
+    fn test_function_application() {
+        let tests = [
+            ("let identity = fn(x) { x; }; identity(5);", 5),
+            ("let identity = fn(x) { return x; }; identity(5);", 5),
+            ("let double = fn(x) { x * 2; }; double(5);", 10),
+            ("let add = fn(x, y) { x + y; }; add(5, 5);", 10),
+            ("let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));", 20),
+            ("fn(x) { x; }(5)", 5),
+        ];
+        for (input, expected) in tests {
+            let evaluated = get_eval(input);
+            assert_int_object(evaluated, expected)
+        }
+    }
+    
+
 }
