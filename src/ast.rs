@@ -94,16 +94,6 @@ pub struct Call {
     pub arguments: Vec<Expression>,
 }
 
-// impl Call {
-//     pub fn get_function_name(&self) -> &String {
-//         match *self.function {
-//             Expression::Identifier(i) => &i.value,
-//             Expression::FnLit(i) => &i.value,
-//             _ => todo!("Expected Identifier or FnLit")
-//         }
-//     }
-// }
-
 #[derive(Debug, Clone)]
 pub enum Statement {
     None,

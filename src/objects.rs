@@ -17,7 +17,7 @@ pub enum ObjectType {
     Function {
         parameters: Vec<Identifier>,
         body: Block,
-        env: Environment,
+        env: Env
     },
     Return {
         obj: Obj,
@@ -34,7 +34,7 @@ impl ObjectType {
                 parameters,
                 body,
                 env,
-            } => todo!(),
+            } => "function".into(),
             ObjectType::Return { obj } => obj.borrow().inspect(),
         }
     }
@@ -60,6 +60,22 @@ impl Environment {
         let mut env = Environment::new();
         env.outer = Some(outer);
         env
+    }
+
+    pub fn get(&self, key: &String) -> Option<Obj> {
+        match self.store.get(key) {
+            Some(i) => Some(i.clone()),
+            None => {
+                if let Some(outer) = &self.outer {
+                    let outer = outer.borrow();
+                    let obj = outer.store.get(key);
+                    if let Some(o) = obj {
+                        return Some(o.clone());
+                    }
+                }
+                None
+            }
+        }
     }
 
     pub fn get_true(&mut self) -> Obj {

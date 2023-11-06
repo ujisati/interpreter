@@ -47,7 +47,7 @@ impl Eval for Statement {
             Statement::Let(i) => i.eval(env),
             Statement::Return(i) => i.eval(env),
             Statement::ExpressionStmt(i) => i.eval(env),
-            Statement::Block(i) => todo!(),
+            Statement::Block(i) => i.eval(env)
         }
     }
 }
@@ -144,9 +144,9 @@ impl Eval for Let {
 
 impl Eval for Identifier {
     fn eval(&self, env: Env) -> Obj {
-        match env.borrow().store.get(&self.value) {
+        match env.borrow().get(&self.value) {
             Some(value) => value.clone(),
-            None => todo!("Identifier not defined"),
+            None => todo!("Identifier not defined: {}", self.value),
         }
     }
 }
@@ -156,22 +156,29 @@ impl Eval for FnLit {
         get_obj(ObjectType::Function {
             parameters: self.parameters.clone(),
             body: self.body.clone(),
-            env: Environment::new_inner(env),
+            env: env.clone()
         })
     }
 }
 
 impl Eval for Call {
     fn eval(&self, env: Env) -> Obj {
-        let function = self.function.eval(env.clone());
-        let args = eval_util::eval_expressions(&self.arguments, env);
-        let inner_env = 
-        for (i, arg) in args.iter().enumerate() {
-
-
-        };
-        todo!()
-
+        match &*self.function.eval(env.clone()).borrow() {
+            ObjectType::Function { parameters, body, env: fn_env } => {
+                let args = eval_util::eval_expressions(&self.arguments, env.clone());
+                let mut inner_env = Environment::new_inner(fn_env.clone());
+                for (i, arg) in args.iter().enumerate() {
+                    inner_env.store.insert(parameters[i].value.clone(), arg.clone());
+                }
+                let evaluated = body.eval(Rc::new(RefCell::new(inner_env)));
+                match &*evaluated.borrow() {
+                    ObjectType::Return { obj } => return obj.clone(),
+                    _ => (),
+                }
+                evaluated
+            },
+            _ => todo!("Expected function")
+        }
     }
 }
 
@@ -273,7 +280,6 @@ mod eval_util {
         evaluated
 
     }
-
 }
 
 #[cfg(test)]
@@ -474,6 +480,29 @@ mod tests {
             assert_int_object(evaluated, expected)
         }
     }
-    
 
+    #[test]
+    fn test_closures() {
+        let input = "
+            let newAdder = fn(x) {
+                fn(y) { x + y };
+            };
+            let addTwo = newAdder(2);
+            addTwo(2);
+        ";
+        let evaluated = get_eval(input);
+        assert_int_object(evaluated, 4);
+    }
+
+    #[test]
+    fn test_first_class_function() {
+        let input = "
+            let add = fn(a, b) { a + b };
+            let sub = fn(a, b) { a - b };
+            let applyFunc = fn(a, b, func) { func(a, b) };
+            applyFunc(10, 2, sub);
+        ";
+        let evaluated = get_eval(input);
+        assert_int_object(evaluated, 8);
+    }
 }
