@@ -31,6 +31,7 @@ pub enum Expression {
     If(If),
     FnLit(FnLit),
     Call(Call),
+    String(Str),
 }
 
 #[derive(Node, Debug, Clone)]
@@ -92,6 +93,12 @@ pub struct Call {
     pub token: Token,
     pub function: Box<Expression>, // Identifier or FnLit
     pub arguments: Vec<Expression>,
+}
+
+#[derive(Node, Debug, Clone)]
+pub struct Str {
+    pub token: Token,
+    pub value: String
 }
 
 #[derive(Debug, Clone)]

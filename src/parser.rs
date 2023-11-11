@@ -10,6 +10,8 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::mem;
 
+use self::parse_fns::parse_function_literal;
+
 #[derive(PartialEq, PartialOrd, Copy, Clone, Debug)]
 enum Precedence {
     Lowest = 1,
@@ -48,6 +50,7 @@ impl<'a> Parser<'a> {
             (TokenType::LPAREN, parse_fns::parse_grouped_expression),
             (TokenType::IF, parse_fns::parse_if_expression),
             (TokenType::FUNCTION, parse_fns::parse_function_literal),
+            (TokenType::STRING, parse_fns::parse_string_literal),
         ]);
         let infix_parse_fns = HashMap::from([
             (
@@ -337,9 +340,14 @@ impl<'a> Parser<'a> {
 }
 
 mod parse_fns {
-    use crate::ast::{Boolean, Call, FnLit, If, Infix, Prefix};
+    use crate::ast::{Boolean, Call, FnLit, If, Infix, Prefix, Str};
 
     use super::*;
+
+    pub fn parse_string_literal(p: &mut Parser) -> Expression {
+        Expression::String(Str {token: p.curr_token.clone(), value: p.curr_token.literal.clone()})
+
+    }
 
     pub fn parse_function_literal(p: &mut Parser) -> Expression {
         let token = p.curr_token.clone();
@@ -958,5 +966,26 @@ mod tests {
             "+".into(),
             Type::Int(5),
         );
+    }
+
+    #[test]
+    fn test_string_literal_expression() {
+        let input = "\"hello world!\";";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse().unwrap();
+        check_errors(parser);
+        assert!(program.statements.len() == 1);
+
+        let exp_stmt = match &program.statements[0] {
+            Statement::ExpressionStmt(s) => s,
+            _ => panic!("Expected expression statement"),
+        };
+        let str_exp = match &exp_stmt.expression {
+            Expression::String(s) => s,
+            _ => panic!("Expected string expression, got {:?}",  exp_stmt),
+        };
+        assert!(str_exp.value == "hello world!");
+
     }
 }
