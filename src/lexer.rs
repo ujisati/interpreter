@@ -12,8 +12,8 @@ pub enum TokenType {
     EOF,
 
     // Identifiers + literals
-    IDENT, // add, foobar, x, y, ...
-    INT,   // 1343456
+    IDENT,
+    INT,
 
     // Operators
     ASSIGN,
@@ -43,6 +43,9 @@ pub enum TokenType {
     IF,
     ELSE,
     RETURN,
+
+    //Types
+    STRING
 }
 
 #[derive(Clone, Debug)]
@@ -78,6 +81,7 @@ impl Token {
             '/' => TokenType::SLASH,
             '>' => TokenType::GT,
             '<' => TokenType::LT,
+            '"' => TokenType::STRING,
             _ => TokenType::ILLEGAL,
         }
     }
@@ -164,12 +168,13 @@ impl<'a> Lexer<'a> {
             TokenType::LT => Token::new(TokenType::LT, self.ch),
             TokenType::GT => Token::new(TokenType::GT, self.ch),
             TokenType::EOF => Token::new(TokenType::EOF, ""),
+            TokenType::STRING => Token::new(TokenType::STRING, self.read_string()),
             _ => {
                 if Lexer::is_letter(self.ch, self.is_eof) {
                     let literal = self.read_identifier();
                     let token_type = self.find_indentifier(&literal);
                     return Token::new(token_type, literal);
-                } else if Lexer::is_digit(self.ch, self.is_eof) {
+                } else if Lexer::is_digit(self.ch, self.is_eof) { 
                     let literal = self.read_number();
                     let token_type = TokenType::INT;
                     return Token::new(token_type, literal);
@@ -196,6 +201,24 @@ impl<'a> Lexer<'a> {
             self.read_char();
         }
         self.input[position..self.position].to_string()
+    }
+
+    fn read_string(&mut self) -> String {
+        let position = self.position + 1;
+        self.read_char();
+        while Lexer::is_string(self.ch, self.is_eof) {
+            self.read_char();
+        }
+        self.read_char();
+        return self.input[position..self.position - 1].to_string()
+
+    }
+
+    fn is_string(ch: char, is_eof: bool) -> bool {
+        if is_eof {
+            return false;
+        }
+        return ch != '"'
     }
 
     fn is_letter(ch: char, is_eof: bool) -> bool {
@@ -308,6 +331,8 @@ mod tests {
             (TokenType::NOTEQUAL, "!="),
             (TokenType::INT, "9"),
             (TokenType::SEMICOLON, ";"),
+            (TokenType::STRING, "foobar"),
+            (TokenType::STRING, "foo bar"),
             (TokenType::EOF, ""),
         ];
         let mut lexer = Lexer::new(
@@ -325,6 +350,8 @@ mod tests {
             }
             10 == 10;
             10 != 9;
+            \"foobar\"
+            \"foo bar\"
             ",
         );
         for token in tokens.iter() {

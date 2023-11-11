@@ -284,7 +284,6 @@ mod eval_util {
 
 #[cfg(test)]
 mod tests {
-
     use crate::{lexer::Lexer, parser::Parser};
 
     use super::*;
