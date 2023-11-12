@@ -204,13 +204,12 @@ impl<'a> Lexer<'a> {
     }
 
     fn read_string(&mut self) -> String {
-        let position = self.position + 1;
         self.read_char();
+        let position = self.position;
         while Lexer::is_string(self.ch, self.is_eof) {
             self.read_char();
         }
-        self.read_char();
-        return self.input[position..self.position - 1].to_string()
+        return self.input[position..self.position].to_string()
 
     }
 
@@ -333,10 +332,11 @@ mod tests {
             (TokenType::SEMICOLON, ";"),
             (TokenType::STRING, "foobar"),
             (TokenType::STRING, "foo bar"),
+            (TokenType::SEMICOLON, ";"),
             (TokenType::EOF, ""),
         ];
         let mut lexer = Lexer::new(
-            "
+            r#"
             let five = 5; 
             let ten = 10; 
             let add = fn(x, y) { x + y; };
@@ -350,9 +350,9 @@ mod tests {
             }
             10 == 10;
             10 != 9;
-            \"foobar\"
-            \"foo bar\"
-            ",
+            "foobar"
+            "foo bar";
+            "#,
         );
         for token in tokens.iter() {
             let tok = lexer.next_token();

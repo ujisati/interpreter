@@ -14,6 +14,9 @@ pub enum ObjectType {
     Boolean {
         value: bool,
     },
+    Str {
+        value: String
+    },
     Function {
         parameters: Vec<Identifier>,
         body: Block,
@@ -30,6 +33,7 @@ impl ObjectType {
             ObjectType::None => "".into(),
             ObjectType::Integer { value } => value.to_string(),
             ObjectType::Boolean { value } => value.to_string(),
+            ObjectType::Str { value } => value.to_string(),
             ObjectType::Function {
                 parameters,
                 body,

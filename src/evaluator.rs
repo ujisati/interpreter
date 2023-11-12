@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         Block, Boolean, DebugString, Expression, ExpressionStmt, FnLit, Identifier, If, Infix,
-        Integer, Let, Node, Prefix, Program, Return, Statement, Call,
+        Integer, Let, Node, Prefix, Program, Return, Statement, Call, Str,
     },
     objects::{Env, Environment, Obj, ObjectType},
 };
@@ -70,7 +70,7 @@ impl Eval for Expression {
             Expression::If(i) => i.eval(env),
             Expression::FnLit(i) => i.eval(env),
             Expression::Call(i) => i.eval(env),
-            Expression::String(i) => todo!()
+            Expression::String(i) => i.eval(env)
 
         }
     }
@@ -181,6 +181,12 @@ impl Eval for Call {
             },
             _ => todo!("Expected function")
         }
+    }
+}
+
+impl Eval for Str {
+    fn eval(&self, env: Env) -> Obj {
+       get_obj(ObjectType::Str { value: self.value.clone() }) 
     }
 }
 
@@ -505,5 +511,16 @@ mod tests {
         ";
         let evaluated = get_eval(input);
         assert_int_object(evaluated, 8);
+    }
+
+    #[test]
+    fn test_string_literal() {
+        let input = "\"Hello world!\"";
+        let evaluated = get_eval(input);
+        let hello = match &*evaluated.borrow() {
+            ObjectType::Str { value } => value.clone(),
+            _ => panic!("Expected string literal")
+        };
+        assert!(hello == "Hello world!");
     }
 }

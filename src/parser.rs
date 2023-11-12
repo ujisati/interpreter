@@ -493,6 +493,7 @@ mod tests {
 
     enum Type {
         Int(i64),
+        Ident(String),
         Str(String),
         Bool(bool),
     }
@@ -506,7 +507,8 @@ mod tests {
         let tests = [
             ("let x = 5;", "x", Type::Int(5)),
             ("let y = true;", "y", Type::Bool(true)),
-            ("let foobar = y;", "foobar", Type::Str("y".into())),
+            ("let foobar = y;", "foobar", Type::Ident("y".into())),
+            (r#"let hello = "Hello world";"#, "hello", Type::Str("Hello world".to_string()))
         ];
 
         for (input, expected_ident, expected_val) in tests {
@@ -559,7 +561,7 @@ mod tests {
         let tests = [
             ("return 5;", Type::Int(5)),
             ("return true;", Type::Bool(true)),
-            ("return y;", Type::Str("y".into())),
+            ("return y;", Type::Ident("y".into())),
         ];
 
         for (input, expected_val) in tests {
@@ -654,6 +656,16 @@ mod tests {
         };
         assert!(int.value == value);
         assert!(int.token_literal() == format!("{}", value));
+        return true;
+    }
+
+    fn check_string_literal(exp: &Expression, value: String) -> bool {
+        let streeng = match exp {
+            Expression::String(s) => s,
+            _ => panic!("Expected string expression"),
+        };
+        assert!(streeng.value == value);
+        assert!(streeng.token_literal() == format!("{}", value));
         return true;
     }
 
@@ -782,8 +794,10 @@ mod tests {
     fn check_literal_expression(expression: &Expression, expected_type: Type) -> bool {
         match expected_type {
             Type::Int(i) => return check_integer_literal(expression, i),
-            Type::Str(i) => return check_identifier(expression, i),
+            Type::Ident(i) => return check_identifier(expression, i),
             Type::Bool(b) => return check_boolean_literal(expression, b),
+            Type::Str(s) => return check_string_literal(expression, s)
+
         }
     }
 
@@ -831,9 +845,9 @@ mod tests {
         };
         check_infix_expression(
             if_stmt.condition.as_ref(),
-            Type::Str("x".into()),
+            Type::Ident("x".into()),
             "<".into(),
-            Type::Str("y".into()),
+            Type::Ident("y".into()),
         );
         let statements = &if_stmt.consequence.as_ref().statements;
         assert!(statements.len() == 1);
@@ -869,9 +883,9 @@ mod tests {
         };
         check_infix_expression(
             if_stmt.condition.as_ref(),
-            Type::Str("x".into()),
+            Type::Ident("x".into()),
             "<".into(),
-            Type::Str("y".into()),
+            Type::Ident("y".into()),
         );
         let statements = &if_stmt.consequence.as_ref().statements;
         assert!(statements.len() == 1);
@@ -926,9 +940,9 @@ mod tests {
         };
         check_infix_expression(
             &body_stmt.expression,
-            Type::Str("x".into()),
+            Type::Ident("x".into()),
             "+".into(),
-            Type::Str("y".into()),
+            Type::Ident("y".into()),
         );
     }
 
