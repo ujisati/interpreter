@@ -183,6 +183,10 @@ impl Eval for Call {
                 }
                 evaluated
             },
+            ObjectType::BuiltinFunction { function, .. } => {
+                let args = eval_util::eval_expressions(&self.arguments, env.clone());
+                function(Some(args), env.clone())
+            }
             _ => todo!("Expected function")
         }
     }

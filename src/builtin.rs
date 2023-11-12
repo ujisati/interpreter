@@ -6,10 +6,10 @@ use crate::objects::ObjectType;
 
 pub fn print(obj: Option<Vec<Obj>>, env: Env) -> Obj {
     let obj = match obj {
-        Some(i) => i[0],
+        Some(i) => i[0].clone(),
         None => todo!("Probably want shared utility for enforcing function signature")
     };
-    match *obj.borrow() {
+    match &*obj.borrow() {
         ObjectType::None => todo!(),
         ObjectType::Integer { value } => todo!(),
         ObjectType::Boolean { value } => todo!(),
@@ -18,5 +18,5 @@ pub fn print(obj: Option<Vec<Obj>>, env: Env) -> Obj {
         ObjectType::Return { obj } => todo!(),
         ObjectType::BuiltinFunction { name, .. } => todo!(),
     }
-    env.borrow().get_none()
+    env.borrow_mut().get_none()
 }

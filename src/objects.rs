@@ -26,8 +26,9 @@ pub enum ObjectType {
         obj: Obj,
     },
     BuiltinFunction {
+        // might be good to add more fn signature specifics here
         name: String,
-        function: fn(Option<Vec<Obj>>) -> Obj
+        function: fn(Option<Vec<Obj>>, Env) -> Obj
     }
 }
 
