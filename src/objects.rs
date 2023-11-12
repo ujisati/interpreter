@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use crate::ast::{Block, Identifier};
+use crate::{ast::{Block, Identifier}, builtin};
 
 pub type Obj = Rc<RefCell<ObjectType>>;
 pub type Env = Rc<RefCell<Environment>>;
@@ -17,7 +17,7 @@ pub enum ObjectType {
     Str {
         value: String
     },
-    Function {
+    Function { 
         parameters: Vec<Identifier>,
         body: Block,
         env: Env
@@ -25,6 +25,10 @@ pub enum ObjectType {
     Return {
         obj: Obj,
     },
+    BuiltinFunction {
+        name: String,
+        function: fn(Option<Vec<Obj>>) -> Obj
+    }
 }
 
 impl ObjectType {
@@ -40,15 +44,19 @@ impl ObjectType {
                 env,
             } => "function".into(),
             ObjectType::Return { obj } => obj.borrow().inspect(),
+            ObjectType::BuiltinFunction { name, ..} => name.to_string()
+
         }
     }
 }
+
 
 #[derive(Debug)]
 pub struct Environment {
     pub store: HashMap<String, Obj>,
     pub obj_pool: HashMap<String, Obj>,
     pub outer: Option<Env>,
+    pub builtin_fns: HashMap<String, fn(Option<Vec<Obj>>, Env) -> Obj>
 }
 
 impl Environment {
@@ -57,6 +65,9 @@ impl Environment {
             store: HashMap::new(),
             obj_pool: HashMap::new(),
             outer: None,
+            builtin_fns: HashMap::from([
+                ("print".into(), builtin::print as fn(Option<Vec<Obj>>, Env) -> Obj),
+            ])
         }
     }
 

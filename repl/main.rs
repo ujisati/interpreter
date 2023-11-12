@@ -1,9 +1,8 @@
 extern crate lang;
 use lang::evaluator::Eval;
 use lang::objects::Environment;
-use lang::{ast::DebugString, parser::Parser};
+use lang::{parser::Parser};
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::io;
 use std::io::Write;
 use std::rc::Rc;

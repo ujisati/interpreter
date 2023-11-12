@@ -16,3 +16,7 @@ path = "src/lib.rs"
 [[bin]]
 name = "repl"
 path = "repl/main.rs"
+
+[[bin]]
+name = "cash"
+path = "cash/main.rs"

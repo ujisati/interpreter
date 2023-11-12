@@ -146,10 +146,14 @@ impl Eval for Let {
 
 impl Eval for Identifier {
     fn eval(&self, env: Env) -> Obj {
-        match env.borrow().get(&self.value) {
-            Some(value) => value.clone(),
-            None => todo!("Identifier not defined: {}", self.value),
+        let value = env.borrow().get(&self.value);
+        if let Some(v) = value {
+            return v.clone();
         }
+        if let Some(f) = env.borrow().builtin_fns.get(&self.value) {
+            return get_obj(ObjectType::BuiltinFunction { name: self.value.clone(), function: f.clone() })
+        };
+        todo!("Identifier not found: {:?}", self.value)
     }
 }
 
@@ -190,7 +194,7 @@ impl Eval for Str {
     }
 }
 
-fn get_obj(obj_type: ObjectType) -> Obj {
+pub fn get_obj(obj_type: ObjectType) -> Obj {
     Rc::new(RefCell::new(obj_type))
 }
 
@@ -523,4 +527,41 @@ mod tests {
         };
         assert!(hello == "Hello world!");
     }
+
+    #[test]
+    #[should_panic]
+    fn test_block_scope() {
+        // TODO: blocks need their own environment
+        let input = "
+            if (true) { let x = 1; };
+            let y = x;
+        ";
+        get_eval(input);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_function_scope() {
+        let input = "
+            let scope = fn() { let x = 1; };
+            scope();
+            let y = x;
+        ";
+        get_eval(input);
+    }
+
+    // #[test]
+    // fn test_builtin_len() {
+    //     let tests = [
+    //         (r#"len("hello!");"#, "hello"),
+    //     ];
+    //     for (input, expected) in tests {
+    //         let evaluated = match *get_eval(input).borrow() {
+    //
+    //             _ => panic!("Expected builtin function")
+    //         };
+    //
+    //         assert!(evaluated.name == "hello!");
+    //     }
+    // }
 }
