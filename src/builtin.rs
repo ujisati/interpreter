@@ -10,13 +10,8 @@ pub fn print(obj: Option<Vec<Obj>>, env: Env) -> Obj {
         None => todo!("Probably want shared utility for enforcing function signature")
     };
     match &*obj.borrow() {
-        ObjectType::None => todo!(),
-        ObjectType::Integer { value } => todo!(),
-        ObjectType::Boolean { value } => todo!(),
         ObjectType::Str { value } => println!("{}", value),
-        ObjectType::Function { parameters, body, env } => todo!(),
-        ObjectType::Return { obj } => todo!(),
-        ObjectType::BuiltinFunction { name, .. } => todo!(),
+        _ => todo!("Better error handling")
     }
     env.borrow_mut().get_none()
 }
@@ -27,13 +22,8 @@ pub fn len(obj: Option<Vec<Obj>>, env: Env) -> Obj {
         None => todo!("Probably want shared utility for enforcing function signature")
     };
     let len = match &*obj.borrow() {
-        ObjectType::None => todo!(),
-        ObjectType::Integer { value } => todo!(),
-        ObjectType::Boolean { value } => todo!(),
         ObjectType::Str { value } => value.len() as i64,
-        ObjectType::Function { parameters, body, env } => todo!(),
-        ObjectType::Return { obj } => todo!(),
-        ObjectType::BuiltinFunction { name, .. } => todo!(),
+        _ => todo!("Better error handling")
     };
     get_obj(ObjectType::Integer { value: len })
 }

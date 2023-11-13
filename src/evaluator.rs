@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         Block, Boolean, DebugString, Expression, ExpressionStmt, FnLit, Identifier, If, Infix,
-        Integer, Let, Node, Prefix, Program, Return, Statement, Call, Str,
+        Integer, Let, Node, Prefix, Program, Return, Statement, Call, Str, Array,
     },
     objects::{Env, Environment, Obj, ObjectType},
 };
@@ -71,7 +71,7 @@ impl Eval for Expression {
             Expression::FnLit(i) => i.eval(env),
             Expression::Call(i) => i.eval(env),
             Expression::String(i) => i.eval(env),
-            Expression::Array(_) => todo!(),
+            Expression::Array(i) => i.eval(env),
         }
     }
 }
@@ -195,6 +195,16 @@ impl Eval for Call {
 impl Eval for Str {
     fn eval(&self, env: Env) -> Obj {
        get_obj(ObjectType::Str { value: self.value.clone() }) 
+    }
+}
+
+impl Eval for Array {
+    fn eval(&self, env: Env) -> Obj {
+        let mut evaluated = Vec::new();
+        for elem in &self.elements {
+            evaluated.push(elem.eval(env.clone()));
+        }
+        get_obj(ObjectType::Array { elements: evaluated })
     }
 }
 
@@ -552,6 +562,38 @@ mod tests {
             let y = x;
         ";
         get_eval(input);
+    }
+
+    #[test]
+    fn test_eval_array() {
+        let input = "
+            let x = 5;
+            let arr = [1, 2 * 2, x];
+            arr;
+        ";
+        let evaluated = get_eval(input);
+        let elements = match &*evaluated.borrow() {
+            ObjectType::Array { elements } => {
+                elements.clone()
+            }
+            _ => panic!("Expected array obj, got {:?}", evaluated)
+        };
+        let val0 = elements[0].borrow();
+        let val1 = elements[1].borrow();
+        let val2 = elements[2].borrow();
+        match *val0 {
+            ObjectType::Integer { value } => assert!(value == 1),
+            _ => panic!("Expected integer")
+        }
+        match *val1 {
+            ObjectType::Integer { value } => assert!(value == 4),
+            _ => panic!("Expected integer")
+        }
+        let val2 = elements[2].borrow();
+        match *val2 {
+            ObjectType::Integer { value } => assert!(value == 5),
+            _ => panic!("Expected integer")
+        }
     }
 
     // #[test]

@@ -17,6 +17,9 @@ pub enum ObjectType {
     Str {
         value: String
     },
+    Array {
+        elements: Vec<Obj>
+    },
     Function { 
         parameters: Vec<Identifier>,
         body: Block,
@@ -45,8 +48,14 @@ impl ObjectType {
                 env,
             } => "function".into(),
             ObjectType::Return { obj } => obj.borrow().inspect(),
-            ObjectType::BuiltinFunction { name, ..} => name.to_string()
-
+            ObjectType::BuiltinFunction { name, ..} => name.to_string(),
+            ObjectType::Array { elements } => {
+                let mut inspected = Vec::new();
+                for elem in elements {
+                    inspected.push(elem.borrow().inspect());
+                }
+                inspected.join(",")
+            }
         }
     }
 }
