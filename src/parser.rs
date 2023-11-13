@@ -51,6 +51,7 @@ impl<'a> Parser<'a> {
             (TokenType::IF, parse_fns::parse_if_expression),
             (TokenType::FUNCTION, parse_fns::parse_function_literal),
             (TokenType::STRING, parse_fns::parse_string_literal),
+            (TokenType::LBRACKET, parse_fns::parse_array_literal),
         ]);
         let infix_parse_fns = HashMap::from([
             (
@@ -311,8 +312,7 @@ impl<'a> Parser<'a> {
         }
 
         if !self.peek_then_next(TokenType::RPAREN) {
-            // TODO: add better error handling
-            panic!("Expected RPAREN")
+            todo!("Better error handling")
         }
 
         args
@@ -340,13 +340,37 @@ impl<'a> Parser<'a> {
 }
 
 mod parse_fns {
-    use crate::ast::{Boolean, Call, FnLit, If, Infix, Prefix, Str};
+    use crate::ast::{Boolean, Call, FnLit, If, Infix, Prefix, Str, Array};
 
     use super::*;
 
+    pub fn parse_array_literal(p: &mut Parser) -> Expression {
+        let token = p.curr_token.clone();
+        let mut elements = Vec::new();
+        if p.is_peek_token_expected(TokenType::RBRACKET) {
+            p.next_token();
+            return Expression::Array(Array { token, elements })
+        }
+
+        p.next_token();
+
+        let exp = p.parse_expression(Precedence::Lowest);
+        elements.push(exp);
+        while p.is_peek_token_expected(TokenType::COMMA) {
+            p.next_token();
+            p.next_token();
+            elements.push(p.parse_expression(Precedence::Lowest));
+        }
+
+        if !p.peek_then_next(TokenType::RBRACKET) {
+            todo!("Better error handling")
+        }
+
+        Expression::Array(Array { token, elements })
+    }
+
     pub fn parse_string_literal(p: &mut Parser) -> Expression {
         Expression::String(Str {token: p.curr_token.clone(), value: p.curr_token.literal.clone()})
-
     }
 
     pub fn parse_function_literal(p: &mut Parser) -> Expression {
@@ -1000,6 +1024,28 @@ mod tests {
             _ => panic!("Expected string expression, got {:?}",  exp_stmt),
         };
         assert!(str_exp.value == "hello world!");
+    }
+
+    #[test]
+    fn test_parse_array_literals() {
+        let input = "[1, 2 * 2, 3 + 3]";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse().unwrap();
+        check_errors(parser);
+        assert!(program.statements.len() == 1);
+
+        let exp_stmt = match &program.statements[0] {
+            Statement::ExpressionStmt(s) => s,
+            _ => panic!("Expected expression statement"),
+        };
+        let arr_exp = match &exp_stmt.expression {
+            Expression::Array(a) => a,
+            _ => panic!("Expected string expression, got {:?}",  exp_stmt),
+        };
+        check_integer_literal(&arr_exp.elements[0], 1);
+        check_infix_expression(&arr_exp.elements[1], Type::Int(2), "*".into(), Type::Int(2));
+        check_infix_expression(&arr_exp.elements[2], Type::Int(3), "+".into(), Type::Int(3));
 
     }
 }

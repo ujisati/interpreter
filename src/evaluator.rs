@@ -70,8 +70,8 @@ impl Eval for Expression {
             Expression::If(i) => i.eval(env),
             Expression::FnLit(i) => i.eval(env),
             Expression::Call(i) => i.eval(env),
-            Expression::String(i) => i.eval(env)
-
+            Expression::String(i) => i.eval(env),
+            Expression::Array(_) => todo!(),
         }
     }
 }

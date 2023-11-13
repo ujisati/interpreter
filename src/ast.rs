@@ -32,6 +32,7 @@ pub enum Expression {
     FnLit(FnLit),
     Call(Call),
     String(Str),
+    Array(Array),
 }
 
 #[derive(Node, Debug, Clone)]
@@ -99,6 +100,12 @@ pub struct Call {
 pub struct Str {
     pub token: Token,
     pub value: String
+}
+
+#[derive(Node, Debug, Clone)]
+pub struct Array {
+    pub token: Token,
+    pub elements: Vec<Expression>
 }
 
 #[derive(Debug, Clone)]
