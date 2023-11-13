@@ -68,6 +68,7 @@ impl Environment {
             outer: None,
             builtin_fns: HashMap::from([
                 ("print".into(), builtin::print as fn(Option<Vec<Obj>>, Env) -> Obj),
+                ("len".into(), builtin::len),
             ])
         }
     }
