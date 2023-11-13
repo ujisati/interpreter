@@ -45,7 +45,9 @@ pub enum TokenType {
     RETURN,
 
     //Types
-    STRING
+    STRING,
+    LBRACKET,
+    RBRACKET,
 }
 
 #[derive(Clone, Debug)]
@@ -82,6 +84,8 @@ impl Token {
             '>' => TokenType::GT,
             '<' => TokenType::LT,
             '"' => TokenType::STRING,
+            '[' => TokenType::LBRACKET,
+            ']' => TokenType::RBRACKET,
             _ => TokenType::ILLEGAL,
         }
     }
@@ -169,6 +173,8 @@ impl<'a> Lexer<'a> {
             TokenType::GT => Token::new(TokenType::GT, self.ch),
             TokenType::EOF => Token::new(TokenType::EOF, ""),
             TokenType::STRING => Token::new(TokenType::STRING, self.read_string()),
+            TokenType::LBRACKET => Token::new(TokenType::LBRACKET, self.ch),
+            TokenType::RBRACKET => Token::new(TokenType::RBRACKET, self.ch),
             _ => {
                 if Lexer::is_letter(self.ch, self.is_eof) {
                     let literal = self.read_identifier();
@@ -333,6 +339,12 @@ mod tests {
             (TokenType::STRING, "foobar"),
             (TokenType::STRING, "foo bar"),
             (TokenType::SEMICOLON, ";"),
+            (TokenType::LBRACKET, "["),
+            (TokenType::INT, "1"),
+            (TokenType::COMMA, ","),
+            (TokenType::INT, "2"),
+            (TokenType::RBRACKET, "]"),
+            (TokenType::SEMICOLON, ";"),
             (TokenType::EOF, ""),
         ];
         let mut lexer = Lexer::new(
@@ -352,6 +364,7 @@ mod tests {
             10 != 9;
             "foobar"
             "foo bar";
+            [1, 2];
             "#,
         );
         for token in tokens.iter() {
