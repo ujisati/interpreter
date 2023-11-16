@@ -33,6 +33,7 @@ pub enum Expression {
     Call(Call),
     String(Str),
     Array(Array),
+    Index(Index),
 }
 
 #[derive(Node, Debug, Clone)]
@@ -106,6 +107,13 @@ pub struct Str {
 pub struct Array {
     pub token: Token,
     pub elements: Vec<Expression>
+}
+
+#[derive(Node, Debug, Clone)]
+pub struct Index {
+    pub token: Token,
+    pub array: Box<Expression>,
+    pub index: Box<Expression>,
 }
 
 #[derive(Debug, Clone)]

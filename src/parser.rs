@@ -66,6 +66,7 @@ impl<'a> Parser<'a> {
             (TokenType::LT, parse_fns::parse_infix_expression),
             (TokenType::GT, parse_fns::parse_infix_expression),
             (TokenType::LPAREN, parse_fns::parse_call_expression),
+            (TokenType::LBRACKET, parse_fns::parse_index_expression),
         ]);
 
         let precedences = HashMap::from([
@@ -343,6 +344,23 @@ mod parse_fns {
     use crate::ast::{Boolean, Call, FnLit, If, Infix, Prefix, Str, Array};
 
     use super::*;
+
+    pub fn parse_index_expressions(p: &mut Parser, array: Expression) -> Expression {
+        // TODO: finish this
+        let token = p.curr_token.clone();
+        info!("parsing infix expression: {}", token.literal);
+        let precedence = p.curr_precedence();
+        p.next_token();
+        info!("\tparsing right");
+        let right = p.parse_expression(precedence);
+        info!("\tright: {}", right.repr());
+        Expression::Index(Infix {
+            left: Box::new(left),
+            right: Box::new(right),
+            operator: token.literal.clone(),
+            token,
+        })
+    }
 
     pub fn parse_array_literal(p: &mut Parser) -> Expression {
         let token = p.curr_token.clone();
@@ -1041,11 +1059,31 @@ mod tests {
         };
         let arr_exp = match &exp_stmt.expression {
             Expression::Array(a) => a,
-            _ => panic!("Expected string expression, got {:?}",  exp_stmt),
+            _ => panic!("Expected array expression, got {:?}",  exp_stmt),
         };
         check_integer_literal(&arr_exp.elements[0], 1);
         check_infix_expression(&arr_exp.elements[1], Type::Int(2), "*".into(), Type::Int(2));
         check_infix_expression(&arr_exp.elements[2], Type::Int(3), "+".into(), Type::Int(3));
+    }
 
+    #[test]
+    fn test_parse_index_array() {
+        let input = "myArray[1 + 1]";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse().unwrap();
+        check_errors(parser);
+        assert!(program.statements.len() == 1);
+
+        let exp_stmt = match &program.statements[0] {
+            Statement::ExpressionStmt(s) => s,
+            _ => panic!("Expected expression statement"),
+        };
+        let idx_exp = match &exp_stmt.expression {
+            Expression::Index(i) => i,
+            _ => panic!("Expected int expression, got {:?}",  exp_stmt),
+        };
+        check_identifier(&*idx_exp.array, "myArray".into());
+        check_infix_expression(&*idx_exp.index, Type::Int(1), "+".into(), Type::Int(1));
     }
 }

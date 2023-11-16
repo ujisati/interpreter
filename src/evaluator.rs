@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         Block, Boolean, DebugString, Expression, ExpressionStmt, FnLit, Identifier, If, Infix,
-        Integer, Let, Node, Prefix, Program, Return, Statement, Call, Str, Array,
+        Integer, Let, Node, Prefix, Program, Return, Statement, Call, Str, Array, Index,
     },
     objects::{Env, Environment, Obj, ObjectType},
 };
@@ -72,6 +72,7 @@ impl Eval for Expression {
             Expression::Call(i) => i.eval(env),
             Expression::String(i) => i.eval(env),
             Expression::Array(i) => i.eval(env),
+            Expression::Index(i) => i.eval(env),
         }
     }
 }
@@ -205,6 +206,15 @@ impl Eval for Array {
             evaluated.push(elem.eval(env.clone()));
         }
         get_obj(ObjectType::Array { elements: evaluated })
+    }
+}
+
+impl Eval for Index {
+    fn eval(&self, env: Env) -> Obj {
+        let arr = match *self.array {
+            Expression::Array(_) => todo!(),
+            _ => todo!("Better error handling")
+        };
     }
 }
 
@@ -589,7 +599,6 @@ mod tests {
             ObjectType::Integer { value } => assert!(value == 4),
             _ => panic!("Expected integer")
         }
-        let val2 = elements[2].borrow();
         match *val2 {
             ObjectType::Integer { value } => assert!(value == 5),
             _ => panic!("Expected integer")
