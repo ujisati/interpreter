@@ -100,13 +100,13 @@ pub struct Call {
 #[derive(Node, Debug, Clone)]
 pub struct Str {
     pub token: Token,
-    pub value: String
+    pub value: String,
 }
 
 #[derive(Node, Debug, Clone)]
 pub struct Array {
     pub token: Token,
-    pub elements: Vec<Expression>
+    pub elements: Vec<Expression>,
 }
 
 #[derive(Node, Debug, Clone)]

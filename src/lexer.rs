@@ -180,7 +180,7 @@ impl<'a> Lexer<'a> {
                     let literal = self.read_identifier();
                     let token_type = self.find_indentifier(&literal);
                     return Token::new(token_type, literal);
-                } else if Lexer::is_digit(self.ch, self.is_eof) { 
+                } else if Lexer::is_digit(self.ch, self.is_eof) {
                     let literal = self.read_number();
                     let token_type = TokenType::INT;
                     return Token::new(token_type, literal);
@@ -215,15 +215,14 @@ impl<'a> Lexer<'a> {
         while Lexer::is_string(self.ch, self.is_eof) {
             self.read_char();
         }
-        return self.input[position..self.position].to_string()
-
+        return self.input[position..self.position].to_string();
     }
 
     fn is_string(ch: char, is_eof: bool) -> bool {
         if is_eof {
             return false;
         }
-        return ch != '"'
+        return ch != '"';
     }
 
     fn is_letter(ch: char, is_eof: bool) -> bool {

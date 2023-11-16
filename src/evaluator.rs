@@ -1,11 +1,11 @@
 use crate::{
     ast::{
-        Block, Boolean, DebugString, Expression, ExpressionStmt, FnLit, Identifier, If, Infix,
-        Integer, Let, Node, Prefix, Program, Return, Statement, Call, Str, Array, Index,
+        Array, Block, Boolean, Call, DebugString, Expression, ExpressionStmt, FnLit, Identifier,
+        If, Index, Infix, Integer, Let, Node, Prefix, Program, Return, Statement, Str,
     },
     objects::{Env, Environment, Obj, ObjectType},
 };
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, ops::Deref, rc::Rc};
 
 // Rc<RefCell> gives us interior mutability (refcell) without worrying about reference lifetimes (rc)
 
@@ -47,7 +47,7 @@ impl Eval for Statement {
             Statement::Let(i) => i.eval(env),
             Statement::Return(i) => i.eval(env),
             Statement::ExpressionStmt(i) => i.eval(env),
-            Statement::Block(i) => i.eval(env)
+            Statement::Block(i) => i.eval(env),
         }
     }
 }
@@ -152,7 +152,10 @@ impl Eval for Identifier {
             return v.clone();
         }
         if let Some(f) = env.borrow().builtin_fns.get(&self.value) {
-            return get_obj(ObjectType::BuiltinFunction { name: self.value.clone(), function: f.clone() })
+            return get_obj(ObjectType::BuiltinFunction {
+                name: self.value.clone(),
+                function: f.clone(),
+            });
         };
         todo!("Identifier not found: {:?}", self.value)
     }
@@ -163,7 +166,7 @@ impl Eval for FnLit {
         get_obj(ObjectType::Function {
             parameters: self.parameters.clone(),
             body: self.body.clone(),
-            env: env.clone()
+            env: env.clone(),
         })
     }
 }
@@ -171,11 +174,17 @@ impl Eval for FnLit {
 impl Eval for Call {
     fn eval(&self, env: Env) -> Obj {
         match &*self.function.eval(env.clone()).borrow() {
-            ObjectType::Function { parameters, body, env: fn_env } => {
+            ObjectType::Function {
+                parameters,
+                body,
+                env: fn_env,
+            } => {
                 let args = eval_util::eval_expressions(&self.arguments, env.clone());
                 let mut inner_env = Environment::new_inner(fn_env.clone());
                 for (i, arg) in args.iter().enumerate() {
-                    inner_env.store.insert(parameters[i].value.clone(), arg.clone());
+                    inner_env
+                        .store
+                        .insert(parameters[i].value.clone(), arg.clone());
                 }
                 let evaluated = body.eval(Rc::new(RefCell::new(inner_env)));
                 match &*evaluated.borrow() {
@@ -183,19 +192,21 @@ impl Eval for Call {
                     _ => (),
                 }
                 evaluated
-            },
+            }
             ObjectType::BuiltinFunction { function, .. } => {
                 let args = eval_util::eval_expressions(&self.arguments, env.clone());
                 function(Some(args), env.clone())
             }
-            _ => todo!("Expected function")
+            _ => todo!("Expected function"),
         }
     }
 }
 
 impl Eval for Str {
     fn eval(&self, env: Env) -> Obj {
-       get_obj(ObjectType::Str { value: self.value.clone() }) 
+        get_obj(ObjectType::Str {
+            value: self.value.clone(),
+        })
     }
 }
 
@@ -205,16 +216,25 @@ impl Eval for Array {
         for elem in &self.elements {
             evaluated.push(elem.eval(env.clone()));
         }
-        get_obj(ObjectType::Array { elements: evaluated })
+        get_obj(ObjectType::Array {
+            elements: evaluated,
+        })
     }
 }
 
 impl Eval for Index {
     fn eval(&self, env: Env) -> Obj {
-        let arr = match *self.array {
-            Expression::Array(_) => todo!(),
-            _ => todo!("Better error handling")
+        let array = match &*self.array.eval(env.clone()).borrow() {
+            ObjectType::Array { elements } => elements.clone(),
+            _ => todo!("Better error handling"),
         };
+        let max = array.len() - 1;
+        let idx = match &*self.index.deref().eval(env.clone()).borrow() {
+            ObjectType::Integer { value } => value.clone() as usize,
+            _ => todo!("Better error handling"),
+        };
+        assert!(idx as usize <= max);
+        return array[idx].clone();
     }
 }
 
@@ -307,14 +327,13 @@ mod eval_util {
         };
         get_obj(obj_type)
     }
-    
+
     pub fn eval_expressions(expressions: &Vec<Expression>, env: Env) -> Vec<Obj> {
         let mut evaluated = Vec::new();
         for expression in expressions {
             evaluated.push(expression.eval(env.clone()))
         }
         evaluated
-
     }
 }
 
@@ -547,7 +566,7 @@ mod tests {
         let evaluated = get_eval(input);
         let hello = match &*evaluated.borrow() {
             ObjectType::Str { value } => value.clone(),
-            _ => panic!("Expected string literal")
+            _ => panic!("Expected string literal"),
         };
         assert!(hello == "Hello world!");
     }
@@ -583,25 +602,46 @@ mod tests {
         ";
         let evaluated = get_eval(input);
         let elements = match &*evaluated.borrow() {
-            ObjectType::Array { elements } => {
-                elements.clone()
-            }
-            _ => panic!("Expected array obj, got {:?}", evaluated)
+            ObjectType::Array { elements } => elements.clone(),
+            _ => panic!("Expected array obj, got {:?}", evaluated),
         };
         let val0 = elements[0].borrow();
         let val1 = elements[1].borrow();
         let val2 = elements[2].borrow();
         match *val0 {
             ObjectType::Integer { value } => assert!(value == 1),
-            _ => panic!("Expected integer")
+            _ => panic!("Expected integer"),
         }
         match *val1 {
             ObjectType::Integer { value } => assert!(value == 4),
-            _ => panic!("Expected integer")
+            _ => panic!("Expected integer"),
         }
         match *val2 {
             ObjectType::Integer { value } => assert!(value == 5),
-            _ => panic!("Expected integer")
+            _ => panic!("Expected integer"),
+        }
+    }
+
+    #[test]
+    fn test_eval_index_array() {
+        let tests = [
+            ("[1, 2, 3][0]", 1),
+            ("[1, 2, 3][1]", 2),
+            ("[1, 2, 3][2]", 3),
+            ("let i = 0; [1][i];", 1),
+            ("[1, 2, 3][1 + 1];", 3),
+            ("let myArray = [1, 2, 3]; myArray[2];", 3),
+            (
+                "let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2];",
+                6,
+            ),
+            ("let myArray = [1, 2, 3]; let i = myArray[0]; myArray[i]", 2),
+            // ("[1, 2, 3][3]", nil),
+            // ("[1, 2, 3][-1]", nil),
+        ];
+        for (input, expected) in tests {
+            let evaluated = get_eval(input);
+            assert_int_object(evaluated, expected);
         }
     }
 

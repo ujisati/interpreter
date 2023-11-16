@@ -1,14 +1,13 @@
 use anyhow::Result;
 
 use crate::ast::{
-    Block, DebugString, Expression, ExpressionStmt, Identifier, Integer, Let, Node, Program,
-    Return, Statement, Index
+    Block, DebugString, Expression, ExpressionStmt, Identifier, Index, Integer, Let, Node, Program,
+    Return, Statement,
 };
 use crate::lexer::{Lexer, Token, TokenType};
 use log::info;
 use std::collections::HashMap;
 use std::mem;
-
 
 #[derive(PartialEq, PartialOrd, Copy, Clone, Debug)]
 enum Precedence {
@@ -341,7 +340,7 @@ impl<'a> Parser<'a> {
 }
 
 mod parse_fns {
-    use crate::ast::{Boolean, Call, FnLit, If, Infix, Prefix, Str, Array};
+    use crate::ast::{Array, Boolean, Call, FnLit, If, Infix, Prefix, Str};
 
     use super::*;
 
@@ -367,7 +366,7 @@ mod parse_fns {
         let mut elements = Vec::new();
         if p.is_peek_token_expected(TokenType::RBRACKET) {
             p.next_token();
-            return Expression::Array(Array { token, elements })
+            return Expression::Array(Array { token, elements });
         }
 
         p.next_token();
@@ -388,7 +387,10 @@ mod parse_fns {
     }
 
     pub fn parse_string_literal(p: &mut Parser) -> Expression {
-        Expression::String(Str {token: p.curr_token.clone(), value: p.curr_token.literal.clone()})
+        Expression::String(Str {
+            token: p.curr_token.clone(),
+            value: p.curr_token.literal.clone(),
+        })
     }
 
     pub fn parse_function_literal(p: &mut Parser) -> Expression {
@@ -550,7 +552,11 @@ mod tests {
             ("let x = 5;", "x", Type::Int(5)),
             ("let y = true;", "y", Type::Bool(true)),
             ("let foobar = y;", "foobar", Type::Ident("y".into())),
-            (r#"let hello = "Hello world";"#, "hello", Type::Str("Hello world".to_string()))
+            (
+                r#"let hello = "Hello world";"#,
+                "hello",
+                Type::Str("Hello world".to_string()),
+            ),
         ];
 
         for (input, expected_ident, expected_val) in tests {
@@ -818,7 +824,6 @@ mod tests {
                 "add(a * b[2], b[1], 2 * [1, 2][1])",
                 "add((a * (b[2])), (b[1]), (2 * ([1, 2][1])))",
             ),
-
         ];
 
         for (input, expected) in tests.iter() {
@@ -847,8 +852,7 @@ mod tests {
             Type::Int(i) => return check_integer_literal(expression, i),
             Type::Ident(i) => return check_identifier(expression, i),
             Type::Bool(b) => return check_boolean_literal(expression, b),
-            Type::Str(s) => return check_string_literal(expression, s)
-
+            Type::Str(s) => return check_string_literal(expression, s),
         }
     }
 
@@ -1048,7 +1052,7 @@ mod tests {
         };
         let str_exp = match &exp_stmt.expression {
             Expression::String(s) => s,
-            _ => panic!("Expected string expression, got {:?}",  exp_stmt),
+            _ => panic!("Expected string expression, got {:?}", exp_stmt),
         };
         assert!(str_exp.value == "hello world!");
     }
@@ -1068,7 +1072,7 @@ mod tests {
         };
         let arr_exp = match &exp_stmt.expression {
             Expression::Array(a) => a,
-            _ => panic!("Expected array expression, got {:?}",  exp_stmt),
+            _ => panic!("Expected array expression, got {:?}", exp_stmt),
         };
         check_integer_literal(&arr_exp.elements[0], 1);
         check_infix_expression(&arr_exp.elements[1], Type::Int(2), "*".into(), Type::Int(2));
@@ -1090,7 +1094,7 @@ mod tests {
         };
         let idx_exp = match &exp_stmt.expression {
             Expression::Index(i) => i,
-            _ => panic!("Expected index expression, got {:?}",  exp_stmt),
+            _ => panic!("Expected index expression, got {:?}", exp_stmt),
         };
         check_identifier(&*idx_exp.array, "myArray".into());
         check_infix_expression(&*idx_exp.index, Type::Int(1), "+".into(), Type::Int(1));

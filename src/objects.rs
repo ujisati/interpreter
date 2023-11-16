@@ -1,6 +1,9 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use crate::{ast::{Block, Identifier}, builtin};
+use crate::{
+    ast::{Block, Identifier},
+    builtin,
+};
 
 pub type Obj = Rc<RefCell<ObjectType>>;
 pub type Env = Rc<RefCell<Environment>>;
@@ -15,15 +18,15 @@ pub enum ObjectType {
         value: bool,
     },
     Str {
-        value: String
+        value: String,
     },
     Array {
-        elements: Vec<Obj>
+        elements: Vec<Obj>,
     },
-    Function { 
+    Function {
         parameters: Vec<Identifier>,
         body: Block,
-        env: Env
+        env: Env,
     },
     Return {
         obj: Obj,
@@ -31,8 +34,8 @@ pub enum ObjectType {
     BuiltinFunction {
         // might be good to add more fn signature specifics here
         name: String,
-        function: fn(Option<Vec<Obj>>, Env) -> Obj
-    }
+        function: fn(Option<Vec<Obj>>, Env) -> Obj,
+    },
 }
 
 impl ObjectType {
@@ -48,25 +51,25 @@ impl ObjectType {
                 env,
             } => "function".into(),
             ObjectType::Return { obj } => obj.borrow().inspect(),
-            ObjectType::BuiltinFunction { name, ..} => name.to_string(),
+            ObjectType::BuiltinFunction { name, .. } => name.to_string(),
             ObjectType::Array { elements } => {
                 let mut inspected = Vec::new();
                 for elem in elements {
                     inspected.push(elem.borrow().inspect());
                 }
-                inspected.join(",")
+                let output = inspected.join(",");
+                String::from("[") + output.as_str() + "]"
             }
         }
     }
 }
-
 
 #[derive(Debug)]
 pub struct Environment {
     pub store: HashMap<String, Obj>,
     pub obj_pool: HashMap<String, Obj>,
     pub outer: Option<Env>,
-    pub builtin_fns: HashMap<String, fn(Option<Vec<Obj>>, Env) -> Obj>
+    pub builtin_fns: HashMap<String, fn(Option<Vec<Obj>>, Env) -> Obj>,
 }
 
 impl Environment {
@@ -76,9 +79,12 @@ impl Environment {
             obj_pool: HashMap::new(),
             outer: None,
             builtin_fns: HashMap::from([
-                ("print".into(), builtin::print as fn(Option<Vec<Obj>>, Env) -> Obj),
+                (
+                    "print".into(),
+                    builtin::print as fn(Option<Vec<Obj>>, Env) -> Obj,
+                ),
                 ("len".into(), builtin::len),
-            ])
+            ]),
         }
     }
 
