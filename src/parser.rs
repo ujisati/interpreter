@@ -2,15 +2,13 @@ use anyhow::Result;
 
 use crate::ast::{
     Block, DebugString, Expression, ExpressionStmt, Identifier, Integer, Let, Node, Program,
-    Return, Statement,
+    Return, Statement, Index
 };
 use crate::lexer::{Lexer, Token, TokenType};
 use log::info;
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::mem;
 
-use self::parse_fns::parse_function_literal;
 
 #[derive(PartialEq, PartialOrd, Copy, Clone, Debug)]
 enum Precedence {
@@ -21,6 +19,7 @@ enum Precedence {
     Product = 5,
     Prefix = 6,
     Call = 7,
+    Index = 8,
 }
 
 pub struct Parser<'a> {
@@ -79,6 +78,7 @@ impl<'a> Parser<'a> {
             (TokenType::SLASH, Precedence::Product),
             (TokenType::ASTERISK, Precedence::Product),
             (TokenType::LPAREN, Precedence::Call),
+            (TokenType::LBRACKET, Precedence::Index),
         ]);
         Self {
             lexer,
@@ -345,19 +345,19 @@ mod parse_fns {
 
     use super::*;
 
-    pub fn parse_index_expressions(p: &mut Parser, array: Expression) -> Expression {
-        // TODO: finish this
+    pub fn parse_index_expression(p: &mut Parser, array: Expression) -> Expression {
         let token = p.curr_token.clone();
-        info!("parsing infix expression: {}", token.literal);
-        let precedence = p.curr_precedence();
+        info!("parsing index expression: {}", token.literal);
         p.next_token();
         info!("\tparsing right");
-        let right = p.parse_expression(precedence);
+        let right = p.parse_expression(Precedence::Lowest);
         info!("\tright: {}", right.repr());
-        Expression::Index(Infix {
-            left: Box::new(left),
-            right: Box::new(right),
-            operator: token.literal.clone(),
+        if !p.peek_then_next(TokenType::RBRACKET) {
+            return Expression::None;
+        }
+        Expression::Index(Index {
+            array: Box::new(array),
+            index: Box::new(right),
             token,
         })
     }
@@ -810,6 +810,15 @@ mod tests {
                 "add(a + b + c * d / f + g)",
                 "add((((a + b) + ((c * d) / f)) + g))",
             ),
+            (
+                "a * [1, 2, 3, 4][b * c] * d",
+                "((a * ([1, 2, 3, 4][(b * c)])) * d)",
+            ),
+            (
+                "add(a * b[2], b[1], 2 * [1, 2][1])",
+                "add((a * (b[2])), (b[1]), (2 * ([1, 2][1])))",
+            ),
+
         ];
 
         for (input, expected) in tests.iter() {
@@ -1067,8 +1076,8 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_index_array() {
-        let input = "myArray[1 + 1]";
+    fn test_parse_index_expression() {
+        let input = "myArray[1 + 1];";
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse().unwrap();
@@ -1081,7 +1090,7 @@ mod tests {
         };
         let idx_exp = match &exp_stmt.expression {
             Expression::Index(i) => i,
-            _ => panic!("Expected int expression, got {:?}",  exp_stmt),
+            _ => panic!("Expected index expression, got {:?}",  exp_stmt),
         };
         check_identifier(&*idx_exp.array, "myArray".into());
         check_infix_expression(&*idx_exp.index, Type::Int(1), "+".into(), Type::Int(1));

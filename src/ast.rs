@@ -207,6 +207,8 @@ impl DebugString for Expression {
             Self::Boolean(b) => b.repr(),
             Self::Call(c) => c.repr(),
             Self::FnLit(f) => f.repr(),
+            Self::Array(a) => a.repr(),
+            Self::Index(i) => i.repr(),
             _ => panic!("Expression not found: {:?}", self),
         }
     }
@@ -302,6 +304,33 @@ impl DebugString for Call {
         output.push_str(&self.function.repr());
         output.push('(');
         output.push_str(&args.join(", "));
+        output.push(')');
+        output
+    }
+}
+
+impl DebugString for Array {
+    fn repr(&self) -> String {
+        let mut output = String::new();
+        let mut args = Vec::new();
+        for arg in &self.elements {
+            args.push(arg.repr());
+        }
+        output.push('[');
+        output.push_str(&args.join(", "));
+        output.push(']');
+        output
+    }
+}
+
+impl DebugString for Index {
+    fn repr(&self) -> String {
+        let mut output = String::new();
+        output.push('(');
+        output.push_str(&self.array.repr());
+        output.push('[');
+        output.push_str(&self.index.repr());
+        output.push(']');
         output.push(')');
         output
     }
